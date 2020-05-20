@@ -37,12 +37,12 @@ message Metadata {
 }
 
 message BuildMetadata {
-  message Builder {
+  message ImageBuilder {
       BuilderType type = 1;
       int32 count = 2;
   }
   int32 numberOfArtifacts = 1;
-  repeated Builder builders= 2;
+  repeated ImageBuilder builders= 2;
   BuildType type = 3;
   // Additional key value pairs to describe the deploy pipeline
   map<string, string> additional = 99;
@@ -216,23 +216,20 @@ message UserIntentRequest {
     Intent intent = 1;
 }
 
-// Intent represents user intents for a given phase to be unblocked, once.
+message TriggerRequest {
+  TriggerState state = 1;
+}
+
+// TriggerState represents trigger state for a given phase.
+message TriggerState {
+  bool enabled = 1; // enable or disable a trigger state
+}
+
+// Intent represents user intents for a given phase.
 message Intent {
     bool build = 1; // in case skaffold dev is ran with autoBuild=false, a build intent enables building once
     bool sync = 2; // in case skaffold dev is ran with autoSync=false, a sync intent enables file sync once
     bool deploy = 3; // in case skaffold dev is ran with autoDeploy=false, a deploy intent enables deploys once
-}
-
-
-message AutoTriggerRequest {
-    AutoTrigger phase = 1;
-}
-
-// AutoTrigger represents enabling or disabling automatic triggers for a given phase
-message AutoTrigger {
-    bool build = 1; // enables or disables autoBuild
-    bool sync = 2; // enables or disables autoSync
-    bool deploy = 3; // enables or disables autoDeploy
 }
 
 // Describes all the methods for the Skaffold API
@@ -268,12 +265,28 @@ service SkaffoldService {
     };
     }
 
-    // Allows for enabling or disabling automatic triggers for phases (build, sync, deploy)
-    rpc UpdateAutoTrigger (AutoTriggerRequest) returns (google.protobuf.Empty) {
+    // Allows for enabling or disabling automatic build trigger
+    rpc AutoBuild (TriggerRequest) returns (google.protobuf.Empty) {
         option (google.api.http) = {
-            post: "/v1/update/trigger"
-            body: "phase"
-    };
+            put: "/v1/build/auto_execute"
+            body: "state"
+        };
+    }
+
+    // Allows for enabling or disabling automatic sync trigger
+    rpc AutoSync (TriggerRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            put: "/v1/sync/auto_execute"
+            body: "state"
+        };
+    }
+
+    // Allows for enabling or disabling automatic deploy trigger
+    rpc AutoDeploy (TriggerRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            put: "/v1/deploy/auto_execute"
+            body: "state"
+        };
     }
 
     // EXPERIMENTAL. It allows for custom events to be implemented in custom builders for example.

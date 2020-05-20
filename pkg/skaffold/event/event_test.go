@@ -197,7 +197,7 @@ func TestStatusCheckEventSucceeded(t *testing.T) {
 	}
 
 	wait(t, func() bool { return handler.getState().StatusCheckState.Status == NotStarted })
-	StatusCheckEventSucceeded()
+	statusCheckEventSucceeded()
 	wait(t, func() bool { return handler.getState().StatusCheckState.Status == Succeeded })
 }
 
@@ -209,7 +209,7 @@ func TestStatusCheckEventFailed(t *testing.T) {
 	}
 
 	wait(t, func() bool { return handler.getState().StatusCheckState.Status == NotStarted })
-	StatusCheckEventFailed(errors.New("one or more deployments failed"))
+	statusCheckEventFailed(errors.New("one or more deployments failed"))
 	wait(t, func() bool { return handler.getState().StatusCheckState.Status == Failed })
 }
 
@@ -233,7 +233,7 @@ func TestResourceStatusCheckEventSucceeded(t *testing.T) {
 	}
 
 	wait(t, func() bool { return handler.getState().StatusCheckState.Status == NotStarted })
-	ResourceStatusCheckEventSucceeded("ns:pod/foo")
+	resourceStatusCheckEventSucceeded("ns:pod/foo")
 	wait(t, func() bool { return handler.getState().StatusCheckState.Resources["ns:pod/foo"] == Succeeded })
 }
 
@@ -245,7 +245,7 @@ func TestResourceStatusCheckEventFailed(t *testing.T) {
 	}
 
 	wait(t, func() bool { return handler.getState().StatusCheckState.Status == NotStarted })
-	ResourceStatusCheckEventFailed("ns:pod/foo", errors.New("one or more deployments failed"))
+	resourceStatusCheckEventFailed("ns:pod/foo", errors.New("one or more deployments failed"))
 	wait(t, func() bool { return handler.getState().StatusCheckState.Resources["ns:pod/foo"] == Failed })
 }
 
@@ -404,4 +404,57 @@ func TestEmptyStateCheckState(t *testing.T) {
 		Resources: map[string]string{},
 	}
 	testutil.CheckDeepEqual(t, expected, actual, cmpopts.EquateEmpty())
+}
+
+func TestUpdateStateAutoTriggers(t *testing.T) {
+	defer func() { handler = &eventHandler{} }()
+	handler = &eventHandler{
+		state: proto.State{
+			BuildState: &proto.BuildState{
+				Artifacts: map[string]string{
+					"image1": Complete,
+				},
+				AutoTrigger: false,
+			},
+			DeployState: &proto.DeployState{Status: Complete, AutoTrigger: false},
+			ForwardedPorts: map[int32]*proto.PortEvent{
+				2001: {
+					LocalPort:  2000,
+					RemotePort: 2001,
+					PodName:    "test/pod",
+				},
+			},
+			StatusCheckState: &proto.StatusCheckState{Status: Complete},
+			FileSyncState: &proto.FileSyncState{
+				Status:      "Complete",
+				AutoTrigger: false,
+			},
+		},
+	}
+	UpdateStateAutoBuildTrigger(true)
+	UpdateStateAutoDeployTrigger(true)
+	UpdateStateAutoSyncTrigger(true)
+
+	expected := proto.State{
+		BuildState: &proto.BuildState{
+			Artifacts: map[string]string{
+				"image1": Complete,
+			},
+			AutoTrigger: true,
+		},
+		DeployState: &proto.DeployState{Status: Complete, AutoTrigger: true},
+		ForwardedPorts: map[int32]*proto.PortEvent{
+			2001: {
+				LocalPort:  2000,
+				RemotePort: 2001,
+				PodName:    "test/pod",
+			},
+		},
+		StatusCheckState: &proto.StatusCheckState{Status: Complete},
+		FileSyncState: &proto.FileSyncState{
+			Status:      "Complete",
+			AutoTrigger: true,
+		},
+	}
+	testutil.CheckDeepEqual(t, expected, handler.getState(), cmpopts.EquateEmpty())
 }
