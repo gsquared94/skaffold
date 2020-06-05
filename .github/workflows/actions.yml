@@ -30,8 +30,8 @@ jobs:
 
     - name: Install skaffold release binary
       run: |
-        curl -LO skaffold https://storage.googleapis.com/skaffold/builds/latest/skaffold-linux-amd64
-        sudo install skaffold /usr/local/bin
+        curl -Lo skaffold https://storage.googleapis.com/skaffold/builds/latest/skaffold-linux-amd64
+        sudo install skaffold /usr/local/bin/skaffold
 
 
     - name: Run tests
