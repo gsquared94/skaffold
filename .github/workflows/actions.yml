@@ -61,7 +61,7 @@ jobs:
         sudo chown $(whoami):docker /home/$(whoami)/.docker -R
         sudo chmod g+rw /home/$(whoami)/.docker -R
         echo '{}' > /home/$(whoami)/.docker/config.json
-        cp ./hack/maven/settings.xml /home/$(whoami)/.m2/settings.xml
+        mkdir -p /home/$(whoami)/.m2/ && cp ./hack/maven/settings.xml /home/$(whoami)/.m2/settings.xml
 
     - name: Install Minikube and start cluster
       run: |
