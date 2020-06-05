@@ -58,6 +58,9 @@ jobs:
       run: |
         curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
         sudo install minikube /usr/local/bin/minikube
+        echo "::set-env name=CHANGE_MINIKUBE_NONE_USER::true"
+        echo "::set-env name=MINIKUBE_WANTUPDATENOTIFICATION::false"
+        echo "::set-env name=MINIKUBE_WANTREPORTERRORPROMPT::false"
         sudo minikube start --profile=minikube --driver=none
 
     - name: Install Skaffold release binary
