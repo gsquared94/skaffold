@@ -60,7 +60,7 @@ jobs:
         sudo chmod g+rw /home/$(whoami)/.config/gcloud -R
         sudo chown $(whoami):docker /home/$(whoami)/.docker -R
         sudo chmod g+rw /home/$(whoami)/.docker -R
-        echo '{}' > /$(whoami)/.docker/config.json
+        echo '{}' > /home/$(whoami)/.docker/config.json
         cp $(PWD)/hack/maven/settings.xml /$(whoami)/.m2/settings.xml
 
     - name: Install Minikube and start cluster
