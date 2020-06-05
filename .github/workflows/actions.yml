@@ -39,8 +39,8 @@ jobs:
         sudo CLOUDSDK_PYTHON="python2.7" /google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
         echo "::add-path::/google-cloud-sdk/bin"
         sudo gcloud auth configure-docker
-        sudo chown $(whoami):docker /home/$(whoami)/.config/gcloud -R
-        sudo chmod g+rw /home/$(whoami)/.config/gcloud -R
+        #sudo chown $(whoami):docker /home/$(whoami)/.config/gcloud -R
+        #sudo chmod g+rw /home/$(whoami)/.config/gcloud -R
 
     - name: Install Container Structure Test
       run: |
@@ -60,8 +60,8 @@ jobs:
       run: |
         curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
         sudo install minikube /usr/local/bin/minikube
-        sudo chown $(whoami):docker /home/$(whoami)/.docker -R
-        sudo chmod g+rw /home/$(whoami)/.docker -R
+        #sudo chown $(whoami):docker /home/$(whoami)/.docker -R
+        #sudo chmod g+rw /home/$(whoami)/.docker -R
         sudo CHANGE_MINIKUBE_NONE_USER=true minikube start --profile=minikube --driver=none
 
     - name: Install Skaffold release binary
@@ -73,4 +73,4 @@ jobs:
     - name: Run integration tests
       env:
         TOKEN: ${{ secrets.TOKEN }}
-      run: make integration-tests
+      run: sudo make integration-tests
