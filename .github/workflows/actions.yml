@@ -39,6 +39,8 @@ jobs:
         sudo CLOUDSDK_PYTHON="python2.7" /google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
         echo "::add-path::/google-cloud-sdk/bin"
         sudo gcloud auth configure-docker
+        sudo chown $(whoami):docker /home/$(whoami)/.config/gcloud -R
+        sudo chmod g+rw /home/$(whoami)/.config/gcloud -R
 
     - name: Install Container Structure Test
       run: |
