@@ -49,7 +49,7 @@ jobs:
       run: |
         curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
         sudo install minikube /usr/local/bin/minikube
-        minikube start --profile=minikube --driver=docker
+        minikube start --profile=minikube --driver=docker --cpus=1
 
     - name: Install Skaffold release binary
       run: |
