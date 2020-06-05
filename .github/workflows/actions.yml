@@ -9,7 +9,7 @@ on:
 jobs:
 
   build:
-    name: Build
+    name: Release binary integration tests
     runs-on: ubuntu-latest
     steps:
 
@@ -22,7 +22,19 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Run Makefile
+    - name: Install & start minikube cluster
+       run: |
+         curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+         sudo install minikube /usr/local/bin/minikube
+         minikube start --profile=minikube --driver=docker
+
+    - name: Install skaffold release binary
+      run: |
+        curl -LO skaffold https://storage.googleapis.com/skaffold/builds/latest/skaffold-linux-amd64
+        sudo install skaffold /usr/local/bin
+
+
+    - name: Run tests
       env:
         TOKEN: ${{ secrets.TOKEN }}
-      run: make integration-in-kind
+      run: make integration-tests
