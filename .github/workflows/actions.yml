@@ -34,7 +34,7 @@ jobs:
 
     - name: Install Ko
       run: |
-        GO111MODULE=off go get github.com/google/ko/cmd/ko
+        (cd && GO111MODULE=on go get github.com/google/ko/cmd/ko)
 
     - name: Install GCloud and configure
       run: |
