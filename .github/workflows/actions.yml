@@ -32,6 +32,10 @@ jobs:
         wget -O kompose https://github.com/kubernetes/kompose/releases/download/v1.21.0/kompose-linux-amd64 && chmod +x kompose
         sudo mv kompose /usr/local/bin/
 
+    - name: Install Ko
+      run: |
+        GO111MODULE=on go get github.com/google/ko/cmd/ko
+
     - name: Install GCloud and configure
       run: |
         wget -O gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-276.0.0-linux-x86_64.tar.gz
