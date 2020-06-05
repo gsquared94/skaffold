@@ -39,8 +39,6 @@ jobs:
         sudo CLOUDSDK_PYTHON="python2.7" /google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
         echo "::add-path::/google-cloud-sdk/bin"
         sudo gcloud auth configure-docker
-        #sudo chown $(whoami):docker /home/$(whoami)/.config/gcloud -R
-        #sudo chmod g+rw /home/$(whoami)/.config/gcloud -R
 
     - name: Install Container Structure Test
       run: |
@@ -56,12 +54,19 @@ jobs:
         curl -L https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-${VERSION}-linux-amd64.tar.gz --output crictl-${VERSION}-linux-amd64.tar.gz
         sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
 
+    - name: Setup other files and permissions
+      run: |
+        sudo chown $(whoami) /home/$(whoami)/.config/gcloud -R
+        sudo chmod g+rw /home/$(whoami)/.config/gcloud -R
+        sudo chown $(whoami):docker /home/$(whoami)/.docker -R
+        sudo chmod g+rw /home/$(whoami)/.docker -R
+        echo '{}' > /$(whoami)/.docker/config.json
+        cp $(PWD)/hack/maven/settings.xml /$(whoami)/.m2/settings.xml
+
     - name: Install Minikube and start cluster
       run: |
         curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
         sudo install minikube /usr/local/bin/minikube
-        #sudo chown $(whoami):docker /home/$(whoami)/.docker -R
-        #sudo chmod g+rw /home/$(whoami)/.docker -R
         sudo CHANGE_MINIKUBE_NONE_USER=true minikube start --profile=minikube --driver=none
 
     - name: Install Skaffold release binary
