@@ -50,15 +50,6 @@ jobs:
         wget -O container-structure-test https://storage.googleapis.com/container-structure-test/v1.8.0/container-structure-test-linux-amd64 && chmod +x container-structure-test
         sudo mv container-structure-test /usr/local/bin/
 
-    - name: Install tools for Minikube None type driver
-      run: |
-        sudo apt-get update -qq
-        sudo apt-get -qq -y install conntrack
-        sudo apt-get -qq -y install socat
-        VERSION="v1.17.0"
-        curl -L https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-${VERSION}-linux-amd64.tar.gz --output crictl-${VERSION}-linux-amd64.tar.gz
-        sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
-
     - name: Setup other files and permissions
       run: |
         sudo chown $(whoami) /home/$(whoami)/.config/gcloud -R
@@ -68,11 +59,8 @@ jobs:
         echo '{}' > /home/$(whoami)/.docker/config.json
         mkdir -p /home/$(whoami)/.m2/ && cp ./hack/maven/settings.xml /home/$(whoami)/.m2/settings.xml
 
-    - name: Install Minikube and start cluster
-      run: |
-        curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-        sudo install minikube /usr/local/bin/minikube
-        CHANGE_MINIKUBE_NONE_USER=true minikube start --profile=minikube --driver=docker
+    - name: Install Minikube
+      uses: medyagh/setup-minikube@master
 
     - name: Install Skaffold release binary
       run: |

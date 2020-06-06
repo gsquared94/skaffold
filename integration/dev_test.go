@@ -358,7 +358,7 @@ func createModifiedKubeconfig(namespace string) ([]byte, string, error) {
 	}
 
 	if kubeConfig.CurrentContext == constants.DefaultMinikubeContext {
-		contextName = kubeConfig.CurrentContext // multiple contexts not available for a single minikube cluster
+		contextName = kubeConfig.CurrentContext // skip test for minikube cluster
 	}
 
 	activeContext := kubeConfig.Contexts[kubeConfig.CurrentContext]
