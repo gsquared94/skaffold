@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/constants"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -354,6 +355,10 @@ func createModifiedKubeconfig(namespace string) ([]byte, string, error) {
 	contextName := "modified-context"
 	if config.IsKindCluster(kubeConfig.CurrentContext) {
 		contextName = "kind-" + contextName
+	}
+
+	if kubeConfig.CurrentContext == constants.DefaultMinikubeContext {
+		contextName = kubeConfig.CurrentContext // multiple contexts not available for a single minikube cluster
 	}
 
 	activeContext := kubeConfig.Contexts[kubeConfig.CurrentContext]
