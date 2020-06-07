@@ -71,10 +71,9 @@ jobs:
 
     - name: Configure GCloud with Docker
       run: |
-        #gcloud components install kubectl
-        #gcloud components install docker-credential-gcr
-        #docker-credential-gcr configure-docker
-        gcloud auth configure-docker
+        gcloud components install kubectl
+        gcloud components install docker-credential-gcr
+        docker-credential-gcr configure-docker
 
     - name: Install Container Structure Test
       run: |
