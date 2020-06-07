@@ -52,14 +52,24 @@ jobs:
         wget -O container-structure-test https://storage.googleapis.com/container-structure-test/v1.8.0/container-structure-test-darwin-amd64 && chmod +x container-structure-test
         sudo mv container-structure-test /usr/local/bin/
 
-    - name: Install Docker
+    - name: Install Docker Client
       run: |
         brew install docker
+
+    -name: Install Docker Daemon
+      run: |
         brew cask install docker
         open -a /Applications/Docker.app
-        docker version
+        counter=0
+        until docker version
+        do
+          sleep 15
+          [[ counter -eq 10 ]] && exit 1
+          echo "Waiting for docker daemon to start"
+          ((counter++))
+        done
 
-    - name: Setup other files and permissions
+- name: Setup other files and permissions
       run: mkdir -p ~/.m2/ && cp ./hack/maven/settings.xml ~/.m2/settings.xml
 
     - name: Install Minikube and start cluster
