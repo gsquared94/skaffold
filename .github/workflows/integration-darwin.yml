@@ -54,15 +54,8 @@ jobs:
 
     - name: Install Docker
       run: |
-        brew install docker-machine docker
-        mkdir -p ~/.docker/machine/cache
-        curl -Lo ~/.docker/machine/cache/boot2docker.iso https://github.com/boot2docker/boot2docker/releases/download/v18.09.1-rc1/boot2docker.iso
-
-    - name: Start Docker machine
-      run: |
-        docker-machine create --driver virtualbox --virtualbox-boot2docker-url ~/.docker/machine/cache/boot2docker.iso default
-        docker-machine restart
-        eval "$(docker-machine env default)"
+        brew cask install docker
+        open -a Docker
 
     - name: Setup other files and permissions
       run: mkdir -p ~/.m2/ && cp ./hack/maven/settings.xml ~/.m2/settings.xml
