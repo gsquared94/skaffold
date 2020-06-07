@@ -56,6 +56,8 @@ jobs:
       run: |
         brew cask install docker
         open -a /Applications/Docker.app
+        brew install docker
+        docker version
 
     - name: Setup other files and permissions
       run: mkdir -p ~/.m2/ && cp ./hack/maven/settings.xml ~/.m2/settings.xml
