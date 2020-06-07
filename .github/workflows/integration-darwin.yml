@@ -43,7 +43,9 @@ jobs:
         sudo tar -xvf gcloud.tar.gz -C /usr/local
         sudo CLOUDSDK_PYTHON="python2.7" /usr/local/google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
         echo "::add-path::/usr/local/google-cloud-sdk/bin"
-        sudo gcloud auth configure-docker
+
+    - name: Configure GCloud with Docker
+      run:  sudo gcloud auth configure-docker
 
     - name: Install Container Structure Test
       run: |
