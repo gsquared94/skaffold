@@ -54,9 +54,9 @@ jobs:
 
     - name: Install Docker
       run: |
+        brew install docker
         brew cask install docker
         open -a /Applications/Docker.app
-        brew install docker
         docker version
 
     - name: Setup other files and permissions
