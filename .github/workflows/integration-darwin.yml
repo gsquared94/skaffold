@@ -69,11 +69,9 @@ jobs:
         CLOUDSDK_PYTHON="python2.7" ${HOME}/google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
         echo ::add-path::${HOME}/google-cloud-sdk/bin
 
-    - name: Configure GCloud with Docker
+    - name: Install kubectl
       run: |
         gcloud components install kubectl
-        gcloud components install docker-credential-gcr
-        docker-credential-gcr configure-docker
 
     - name: Install Container Structure Test
       run: |
