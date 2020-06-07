@@ -40,9 +40,9 @@ jobs:
     - name: Install GCloud and configure
       run: |
         wget -O gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-276.0.0-darwin-x86_64.tar.gz
-        tar -xvf gcloud.tar.gz -C ${HOME}
-        CLOUDSDK_PYTHON="python2.7" ${HOME}/google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
-        echo "::add-path::${HOME}/google-cloud-sdk/bin"
+        tar -xvf gcloud.tar.gz -C ~
+        CLOUDSDK_PYTHON="python2.7" ~/google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
+        echo "::add-path::~/google-cloud-sdk/bin"
 
     - name: Configure GCloud with Docker
       run:  gcloud auth configure-docker
@@ -53,13 +53,16 @@ jobs:
         sudo mv container-structure-test /usr/local/bin/
 
     - name: Install Docker
-      run: brew install docker-machine docker
+      run: |
+        brew install docker-machine docker
+        mkdir -p ~/.docker/machine/cache
+        curl -Lo ~/.docker/machine/cache/boot2docker.iso https://github.com/boot2docker/boot2docker/releases/download/v18.09.1-rc1/boot2docker.iso
 
     - name: Start Docker machine
-      run: docker-machine create --driver virtualbox default
+      run: docker-machine create --driver virtualbox --virtualbox-boot2docker-url ~/.docker/machine/cache/boot2docker.iso default
 
     - name: Setup other files and permissions
-      run: mkdir -p ${HOME}/.m2/ && cp ./hack/maven/settings.xml ${HOME}/.m2/settings.xml
+      run: mkdir -p ~/.m2/ && cp ./hack/maven/settings.xml ~/.m2/settings.xml
 
     - name: Install Minikube and start cluster
       run: |
