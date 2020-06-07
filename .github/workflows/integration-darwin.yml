@@ -40,9 +40,9 @@ jobs:
     - name: Install GCloud and configure
       run: |
         wget -O gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-276.0.0-darwin-x86_64.tar.gz
-        sudo tar -xvf gcloud.tar.gz -C /usr/local
-        sudo CLOUDSDK_PYTHON="python2.7" /usr/local/google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
-        echo "::add-path::/usr/local/google-cloud-sdk/bin"
+        sudo tar -xvf gcloud.tar.gz -C ${HOME}
+        sudo CLOUDSDK_PYTHON="python2.7" ${HOME}/google-cloud-sdk/install.sh --usage-reporting=false --bash-completion=false --disable-installation-options
+        echo "::add-path::${HOME}/google-cloud-sdk/bin"
 
     - name: Configure GCloud with Docker
       run:  sudo gcloud auth configure-docker
