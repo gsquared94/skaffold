@@ -52,20 +52,22 @@ jobs:
         wget -O container-structure-test https://storage.googleapis.com/container-structure-test/v1.8.0/container-structure-test-darwin-amd64 && chmod +x container-structure-test
         sudo mv container-structure-test /usr/local/bin/
 
-    - name: Install Docker Client
+    - name: Install Docker
       run: |
-        brew install docker
-
-    - name: Install Docker Daemon
+        brew install docker docker-machine
+        mkdir -p ~/.docker/machine/cache
+        curl -Lo ~/.docker/machine/cache/boot2docker.iso https://github.com/boot2docker/boot2docker/releases/download/v18.09.1-rc1/boot2docker.iso
+        docker-machine create --driver virtualbox --virtualbox-boot2docker-url ~/.docker/machine/cache/boot2docker.iso default
+        docker-machine env default
+        eval "$(docker-machine env default)"
+    - name: Wait Docker Daemon startup
       run: |
-        brew cask install docker
-        open -a /Applications/Docker.app
         counter=0
-        until docker version --format {{.Server.Os}}-{{.Server.Version}} && echo "Docker daemon running"
+        until docker version --format {{.Server.Version}} && echo "Docker daemon running"
         do
         echo "Retry docker daemon status check..."
-        sleep 15
-        [[ counter -eq 10 ]] && echo "Docker daemon start failed" && exit 1
+        sleep 20
+        [[ counter -eq 30 ]] && echo "Docker daemon start failed" && exit 1
         ((counter++))
         done
 
