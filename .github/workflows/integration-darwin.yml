@@ -83,7 +83,7 @@ jobs:
       run: |
         curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-darwin-amd64
         sudo install minikube /usr/local/bin/minikube
-        sudo minikube start --profile=minikube --driver=none
+        sudo minikube start --profile=minikube
 
     - name: Install Skaffold release binary
       run: |
