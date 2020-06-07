@@ -70,7 +70,7 @@ jobs:
         echo ::add-path::~/google-cloud-sdk/bin
 
     - name: Configure GCloud with Docker
-      run:  |
+      run: |
         gcloud components install kubectl
         gcloud components install docker-credential-gcr
         docker-credential-gcr configure-docker
