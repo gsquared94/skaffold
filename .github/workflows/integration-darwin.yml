@@ -54,8 +54,6 @@ jobs:
 
     - name: Setup other files and permissions
       run: |
-        sudo chown $(whoami) ${HOME}/.config/gcloud -R
-        sudo chmod g+rw ${HOME}/.config/gcloud -R
         sudo chown $(whoami):docker ${HOME}/.docker -R
         sudo chmod g+rw ${HOME}/.docker -R
         echo '{}' > ${HOME}/.docker/config.json
