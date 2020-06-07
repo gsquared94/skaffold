@@ -60,10 +60,10 @@ jobs:
         docker-machine create --driver virtualbox --virtualbox-boot2docker-url ~/.docker/machine/cache/boot2docker.iso default
         docker-machine env default
         eval $(docker-machine env default)
-        echo ::set-env name={DOCKER_TLS_VERIFY}::{$DOCKER_TLS_VERIFY}
-        echo ::set-env name={DOCKER_HOST}::{$DOCKER_HOST}
-        echo ::set-env name={DOCKER_CERT_PATH}::{$DOCKER_CERT_PATH}
-        echo ::set-env name={DOCKER_MACHINE_NAME}::{$DOCKER_MACHINE_NAME}
+        echo ::set-env name=DOCKER_TLS_VERIFY::${DOCKER_TLS_VERIFY}
+        echo ::set-env name=DOCKER_HOST::${DOCKER_HOST}
+        echo ::set-env name=DOCKER_CERT_PATH::${DOCKER_CERT_PATH}
+        echo ::set-env name=DOCKER_MACHINE_NAME::${DOCKER_MACHINE_NAME}
 
     - name: Wait Docker Daemon startup
       run: |
