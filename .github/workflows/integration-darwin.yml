@@ -54,9 +54,6 @@ jobs:
 
     - name: Setup other files and permissions
       run: |
-        sudo chown $(whoami):docker ${HOME}/.docker -R
-        sudo chmod g+rw ${HOME}/.docker -R
-        echo '{}' > ${HOME}/.docker/config.json
         mkdir -p ${HOME}/.m2/ && cp ./hack/maven/settings.xml ${HOME}/.m2/settings.xml
 
     - name: Install Minikube and start cluster
