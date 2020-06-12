@@ -40,8 +40,14 @@ jobs:
         gcloud --quiet auth configure-docker
         gcloud container clusters get-credentials "$GKE_CLUSTER" -z "$GKE_ZONE"
         
+    - name: Install Kustomize
+      run: choco install -ydf Kustomize
+
     - name: Install Skaffold release binary
-      run: choco install -ydf skaffold
+      shell: cmd
+      run: |
+        curl -Lo skaffold.exe https://storage.googleapis.com/skaffold/builds/latest/skaffold-windows-amd64.exe
+        move skaffold.exe C:\Windows\system32\skaffold.exe
 
     - name: Run integration tests
       env:
