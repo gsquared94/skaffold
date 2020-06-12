@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -58,6 +59,10 @@ func TestBuildKanikoWithExplicitRepo(t *testing.T) {
 //see integration/testdata/README.md for details
 func TestBuildInCluster(t *testing.T) {
 	MarkIntegrationTest(t, NeedsGcp)
+
+	if runtime.GOOS != "linux" {
+		t.Skip("Skip test requiring linux runtime")
+	}
 
 	testutil.Run(t, "", func(t *testutil.T) {
 		ns, client := SetupNamespace(t.T)
