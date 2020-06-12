@@ -34,12 +34,11 @@ jobs:
         project_id: ${{ secrets.GKE_PROJECT }}
 
     # Configure Docker to use the gcloud command-line tool as a credential
-    # helper for authentication
-    - run: |-
+    - name: Configure docker and kubectl
+      shell: cmd
+      run: |
         gcloud --quiet auth configure-docker
-    # Get the GKE credentials so we can deploy to the cluster
-    - run: |-
-        gcloud container clusters get-credentials "$GKE_CLUSTER" --zone "$GKE_ZONE"
+        gcloud container clusters get-credentials "$GKE_CLUSTER" -z "$GKE_ZONE"
         
     - name: Install Skaffold release binary
       run: choco install -ydf skaffold
