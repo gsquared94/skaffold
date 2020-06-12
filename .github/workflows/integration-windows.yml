@@ -8,7 +8,7 @@ env:
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
   GKE_CLUSTER: integration-tests
   GKE_ZONE: us-central1-a
-  GKE_ONLY: true
+  GCP_ONLY: true
 
 jobs:
 
