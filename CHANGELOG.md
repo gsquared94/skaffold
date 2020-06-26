@@ -1,3 +1,18 @@
+# v1.11.7 Release - 06/26/2020
+
+**Linux**
+`curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.7/skaffold-linux-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
+
+ **macOS**
+`curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.7/skaffold-darwin-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
+
+ **Windows**
+https://storage.googleapis.com/skaffold/releases/v1.11.7/skaffold-windows-amd64.exe
+
+ **Docker image**
+`gcr.io/k8s-skaffold/skaffold:v1.11.7`
+
+ New Features: CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPMENT.md LICENSE MAINTAINERS Makefile Makefile.diag README.md ROADMAP.md cmd codecov.yml deploy deprecation-policy.md docs examples go.mod go.sum hack installers integration logo pkg proto testutil vendor webhook Add json output to `skaffold schema list` [#4385](https://github.com/GoogleContainerTools/skaffold/pull/4385) Fixes: CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPMENT.md LICENSE MAINTAINERS Makefile Makefile.diag README.md ROADMAP.md cmd codecov.yml deploy deprecation-policy.md docs examples go.mod go.sum hack installers integration logo pkg proto testutil vendor webhook Fix proto generation [#4387](https://github.com/GoogleContainerTools/skaffold/pull/4387) Updates & Refactors: CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPMENT.md LICENSE MAINTAINERS Makefile Makefile.diag README.md ROADMAP.md cmd codecov.yml deploy deprecation-policy.md docs examples go.mod go.sum hack installers integration logo pkg proto testutil vendor webhook Add suggestion code and suggestions to known build problems [#4383](https://github.com/GoogleContainerTools/skaffold/pull/4383) Huge thanks goes out to all of our contributors for this release: - Alex Lewis - Andreas Sommer - Appu - Brian de Alwis - Chanseok Oh - Chris Ge - David Gageot - Gaurav - Lennox Stevenson - Nick Kubala - Nils Breunese - Paul Vollmer - Stefan Büringer - Tejal Desai
 # v1.12.0 Release - 06/25/2020
 
 **Linux**
