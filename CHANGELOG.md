@@ -1,3 +1,18 @@
+# v1.11.5 Release - 06/26/2020
+config
+**Linux**
+`curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.5/skaffold-linux-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
+
+ **macOS**
+`curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.5/skaffold-darwin-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
+
+ **Windows**
+https://storage.googleapis.com/skaffold/releases/v1.11.5/skaffold-windows-amd64.exe
+
+ **Docker image**
+`gcr.io/k8s-skaffold/skaffold:v1.11.5`
+
+ changelog
 # v1.12.0 Release - 06/25/2020
 
 **Linux**
