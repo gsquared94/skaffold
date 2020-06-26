@@ -1,3 +1,44 @@
+# v1.11.12 Release - 06/26/2020
+**Linux**
+`curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.12/skaffold-linux-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
+
+ **macOS**
+`curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.12/skaffold-darwin-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
+
+ **Windows**
+https://storage.googleapis.com/skaffold/releases/v1.11.12/skaffold-windows-amd64.exe
+
+ **Docker image**
+`gcr.io/k8s-skaffold/skaffold:v1.11.12`
+
+ 
+New Features:
+* Add json output to `skaffold schema list` [#4385](https://github.com/GoogleContainerTools/skaffold/pull/4385)
+
+
+Fixes:
+* Fix proto generation [#4387](https://github.com/GoogleContainerTools/skaffold/pull/4387)
+
+
+Updates & Refactors:
+* Add suggestion code and suggestions to known build problems [#4383](https://github.com/GoogleContainerTools/skaffold/pull/4383)
+
+
+Huge thanks goes out to all of our contributors for this release:
+- Alex Lewis
+- Andreas Sommer
+- Appu
+- Brian de Alwis
+- Chanseok Oh
+- Chris Ge
+- David Gageot
+- Gaurav
+- Lennox Stevenson
+- Nick Kubala
+- Nils Breunese
+- Paul Vollmer
+- Stefan Büringer
+- Tejal Desai
 # v1.11.4 Release - 06/26/2020**Linux**
 `curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.11.4/skaffold-linux-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin`
 
