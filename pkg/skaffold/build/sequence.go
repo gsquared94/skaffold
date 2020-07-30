@@ -27,7 +27,7 @@ import (
 )
 
 // InSequence builds a list of artifacts in sequence.
-func InSequence(ctx context.Context, out io.Writer, artifacts []*latest.Artifact, options []BuilderOptions, buildArtifact artifactBuilder) ([]Artifact, error) {
+func InSequence(ctx context.Context, out io.Writer, artifacts []*latest.Artifact, options []BuilderOptions, buildArtifact ArtifactBuilder) ([]Artifact, error) {
 	var builds []Artifact
 
 	for i, artifact := range artifacts {

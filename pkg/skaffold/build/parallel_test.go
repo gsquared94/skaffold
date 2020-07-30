@@ -33,12 +33,12 @@ import (
 
 func TestGetBuild(t *testing.T) {
 	tests := []struct {
-		shouldErr     bool
-		buildArtifact artifactBuilder
 		description   string
+		buildArtifact ArtifactBuilder
+		opts          BuilderOptions
 		expectedTag   string
 		expectedOut   string
-		opts          BuilderOptions
+		shouldErr     bool
 	}{
 		{
 			description: "build succeeds",
@@ -185,7 +185,7 @@ func TestCollectResults(t *testing.T) {
 func TestInParallel(t *testing.T) {
 	tests := []struct {
 		description string
-		buildFunc   artifactBuilder
+		buildFunc   ArtifactBuilder
 		expected    string
 	}{
 		{
@@ -292,14 +292,14 @@ func TestInParallelConcurrency(t *testing.T) {
 func TestInParallelForArgs(t *testing.T) {
 	tests := []struct {
 		description   string
-		inSeqFunc     func(context.Context, io.Writer, []*latest.Artifact, []BuilderOptions, artifactBuilder) ([]Artifact, error)
-		buildArtifact artifactBuilder
+		inSeqFunc     func(context.Context, io.Writer, []*latest.Artifact, []BuilderOptions, ArtifactBuilder) ([]Artifact, error)
+		buildArtifact ArtifactBuilder
 		artifactLen   int
 		expected      []Artifact
 	}{
 		{
 			description: "runs in sequence for 1 artifact",
-			inSeqFunc: func(context.Context, io.Writer, []*latest.Artifact, []BuilderOptions, artifactBuilder) ([]Artifact, error) {
+			inSeqFunc: func(context.Context, io.Writer, []*latest.Artifact, []BuilderOptions, ArtifactBuilder) ([]Artifact, error) {
 				return []Artifact{{ImageName: "singleArtifact", Tag: "one"}}, nil
 			},
 			artifactLen: 1,

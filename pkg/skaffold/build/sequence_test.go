@@ -32,7 +32,7 @@ import (
 func TestInSequence(t *testing.T) {
 	tests := []struct {
 		description       string
-		buildArtifact     artifactBuilder
+		buildArtifact     ArtifactBuilder
 		expectedArtifacts []Artifact
 		options           []BuilderOptions
 		expectedOut       string

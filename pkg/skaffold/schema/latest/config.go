@@ -22,8 +22,8 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/util"
 )
 
-// !!! WARNING !!! This config version is already released, please DO NOT MODIFY the structs in this file.
-const Version string = "skaffold/v2beta5"
+// This config version is not yet released, it is SAFE TO MODIFY the structs in this file.
+const Version string = "skaffold/v2beta6"
 
 // NewSkaffoldConfig creates a SkaffoldConfig
 func NewSkaffoldConfig() util.VersionedConfig {
@@ -152,9 +152,8 @@ type EnvTemplateTagger struct {
 	// Template used to produce the image name and tag.
 	// See golang [text/template](https://golang.org/pkg/text/template/).
 	// The template is executed against the current environment,
-	// with those variables injected:
-	//   IMAGE_NAME   |  Name of the image being built, as supplied in the artifacts section.
-	// For example: `{{.RELEASE}}-{{.IMAGE_NAME}}`.
+	// with those variables injected.
+	// For example: `{{.RELEASE}}`.
 	Template string `yaml:"template,omitempty" yamltags:"required"`
 }
 
@@ -273,6 +272,9 @@ type GoogleCloudBuild struct {
 	// Concurrency is how many artifacts can be built concurrently. 0 means "no-limit".
 	// Defaults to `0`.
 	Concurrency int `yaml:"concurrency,omitempty"`
+
+	// WorkerPool configures a pool of workers to run the build.
+	WorkerPool string `yaml:"workerPool,omitempty"`
 }
 
 // KanikoCache configures Kaniko caching. If a cache is specified, Kaniko will
@@ -409,6 +411,9 @@ type DeployConfig struct {
 	// KubeContext is the Kubernetes context that Skaffold should deploy to.
 	// For example: `minikube`.
 	KubeContext string `yaml:"kubeContext,omitempty"`
+
+	// Logs configures how container logs are printed as a result of a deployment.
+	Logs LogsConfig `yaml:"logs,omitempty"`
 }
 
 // DeployType contains the specific implementation and parameters needed
@@ -505,10 +510,9 @@ type HelmRelease struct {
 	// ValuesFiles are the paths to the Helm `values` files.
 	ValuesFiles []string `yaml:"valuesFiles,omitempty"`
 
-	// ArtifactOverrides are key value pairs where
-	// key represents the parameter used in `values` file to define a container image and
-	// value corresponds to artifact i.e. `ImageName` defined in `Build.Artifacts` section.
-	ArtifactOverrides map[string]string `yaml:"artifactOverrides,omitempty,omitempty"`
+	// ArtifactOverrides are key value pairs.
+	// If present, Skaffold will send `--set-string` flag to Helm CLI and append all pairs after the flag.
+	ArtifactOverrides util.FlatMap `yaml:"artifactOverrides,omitempty,omitempty"`
 
 	// Namespace is the Kubernetes namespace.
 	Namespace string `yaml:"namespace,omitempty"`
@@ -518,13 +522,13 @@ type HelmRelease struct {
 
 	// SetValues are key-value pairs.
 	// If present, Skaffold will send `--set` flag to Helm CLI and append all pairs after the flag.
-	SetValues map[string]string `yaml:"setValues,omitempty"`
+	SetValues util.FlatMap `yaml:"setValues,omitempty"`
 
 	// SetValueTemplates are key-value pairs.
 	// If present, Skaffold will try to parse the value part of each key-value pair using
 	// environment variables in the system, then send `--set` flag to Helm CLI and append
 	// all parsed pairs after the flag.
-	SetValueTemplates map[string]string `yaml:"setValueTemplates,omitempty"`
+	SetValueTemplates util.FlatMap `yaml:"setValueTemplates,omitempty"`
 
 	// SetFiles are key-value pairs.
 	// If present, Skaffold will send `--set-file` flag to Helm CLI and append all pairs after the flag.
@@ -599,6 +603,17 @@ type HelmFQNConfig struct {
 type HelmConventionConfig struct {
 	// ExplicitRegistry separates `image.registry` to the image config syntax. Useful for some charts e.g. `postgresql`.
 	ExplicitRegistry bool `yaml:"explicitRegistry,omitempty"`
+}
+
+// LogsConfig configures how container logs are printed as a result of a deployment.
+type LogsConfig struct {
+	// Prefix defines the prefix shown on each log line. Valid values are
+	// `container`: prefix logs lines with the name of the container.
+	// `podAndContainer`: prefix logs lines with the names of the pod and of the container.
+	// `auto`: same as `podAndContainer` except that the pod name is skipped if it's the same as the container name.
+	// `none`: don't add a prefix.
+	// Defaults to `auto`.
+	Prefix string `yaml:"prefix,omitempty"`
 }
 
 // Artifact are the items that need to be built, along with the context in which

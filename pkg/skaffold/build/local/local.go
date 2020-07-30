@@ -42,7 +42,8 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, artifacts []*latest.
 	}
 	defer b.localDocker.Close()
 
-	return build.InParallel(ctx, out, artifacts, options, b.buildArtifact, *b.cfg.Concurrency)
+	builder := build.WithLogFile(b.buildArtifact, b.suppressLogs)
+	return build.InParallel(ctx, out, artifacts, options, builder, *b.cfg.Concurrency)
 }
 
 func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, opts build.BuilderOptions) (string, error) {

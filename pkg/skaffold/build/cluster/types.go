@@ -22,7 +22,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/constants"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubectl"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/runner/runcontext"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
@@ -36,6 +35,7 @@ type Builder struct {
 	kubeContext        string
 	timeout            time.Duration
 	insecureRegistries map[string]bool
+	suppressLogs       []string
 }
 
 // NewBuilder creates a new Builder that builds artifacts on cluster.
@@ -51,14 +51,8 @@ func NewBuilder(runCtx *runcontext.RunContext) (*Builder, error) {
 		timeout:            timeout,
 		kubeContext:        runCtx.KubeContext,
 		insecureRegistries: runCtx.InsecureRegistries,
+		suppressLogs:       runCtx.Opts.SuppressLogs,
 	}, nil
-}
-
-// Labels are labels specific to cluster builder.
-func (b *Builder) Labels() map[string]string {
-	return map[string]string{
-		constants.Labels.Builder: "cluster",
-	}
 }
 
 func (b *Builder) Prune(ctx context.Context, out io.Writer) error {

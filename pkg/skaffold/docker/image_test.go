@@ -25,9 +25,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/random"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
@@ -364,65 +361,6 @@ func TestImageExists(t *testing.T) {
 			actual := localDocker.ImageExists(context.Background(), test.image)
 
 			t.CheckDeepEqual(test.expected, actual)
-		})
-	}
-}
-
-func TestInsecureRegistry(t *testing.T) {
-	tests := []struct {
-		description        string
-		image              string
-		insecureRegistries map[string]bool
-		insecure           bool
-		shouldErr          bool
-	}{
-		{
-			description:        "secure image",
-			image:              "gcr.io/secure/image",
-			insecureRegistries: map[string]bool{},
-		},
-		{
-			description: "insecure image",
-			image:       "my.insecure.registry/image",
-			insecureRegistries: map[string]bool{
-				"my.insecure.registry": true,
-			},
-			insecure: true,
-		},
-		{
-			description: "insecure image not provided by user",
-			image:       "my.insecure.registry/image",
-			insecure:    true,
-			shouldErr:   true,
-		},
-		{
-			description: "secure image provided in insecure registries list",
-			image:       "gcr.io/secure/image",
-			insecureRegistries: map[string]bool{
-				"gcr.io": true,
-			},
-			shouldErr: true,
-		},
-	}
-	for _, test := range tests {
-		testutil.Run(t, test.description, func(t *testutil.T) {
-			called := false // variable to make sure we've called our getInsecureRegistry function
-
-			t.Override(&getInsecureRegistryImpl, func(string) (name.Reference, error) {
-				called = true
-				return name.Tag{}, nil
-			})
-			t.Override(&getRemoteImageImpl, func(name.Reference) (v1.Image, error) {
-				return random.Image(0, 0)
-			})
-
-			_, err := remoteImage(test.image, test.insecureRegistries)
-
-			t.CheckNoError(err)
-			if !test.shouldErr {
-				t.CheckFalse(test.insecure && !called)
-				t.CheckFalse(!test.insecure && called)
-			}
 		})
 	}
 }

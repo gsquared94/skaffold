@@ -41,45 +41,26 @@ type Artifact struct {
 	Namespace string
 }
 
-// Labeller can give key/value labels to set on deployed resources.
-type Labeller interface {
-	// Labels keys must be prefixed with "skaffold.dev/"
-	Labels() map[string]string
-}
-
-// merge merges the labels from multiple sources.
-func merge(addSkaffoldLabels bool, deployer Labeller, sources ...Labeller) map[string]string {
-	if !addSkaffoldLabels {
-		return map[string]string{}
-	}
-
-	merged := deployer.Labels()
-
-	for _, src := range sources {
-		copyMap(merged, src.Labels())
-	}
-
-	return merged
-}
-
 // retry 3 times to give the object time to propagate to the API server
 const (
 	tries     = 3
 	sleeptime = 300 * time.Millisecond
 )
 
-func labelDeployResults(labels map[string]string, results []Artifact) {
+func labelDeployResults(labels map[string]string, results []Artifact) error {
+	if len(labels) == 0 {
+		return nil
+	}
+
 	// use the kubectl client to update all k8s objects with a skaffold watermark
 	dynClient, err := kubernetes.DynamicClient()
 	if err != nil {
-		logrus.Warnf("error getting Kubernetes dynamic client: %s", err.Error())
-		return
+		return fmt.Errorf("error getting Kubernetes dynamic client: %w", err)
 	}
 
 	client, err := kubernetes.Client()
 	if err != nil {
-		logrus.Warnf("error getting Kubernetes client: %s", err.Error())
-		return
+		return fmt.Errorf("error getting Kubernetes client: %w", err)
 	}
 
 	for _, res := range results {
@@ -94,6 +75,8 @@ func labelDeployResults(labels map[string]string, results []Artifact) {
 			logrus.Warnf("error adding label to runtime object: %s", err.Error())
 		}
 	}
+
+	return nil
 }
 
 func addLabels(labels map[string]string, accessor metav1.Object) {

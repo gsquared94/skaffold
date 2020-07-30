@@ -126,6 +126,7 @@ func runPackBuild(ctx context.Context, out io.Writer, localDocker docker.LocalDa
 	packClient, err := pack.NewClient(
 		pack.WithDockerClient(localDocker.RawClient()),
 		pack.WithLogger(NewLogger(out)),
+		pack.WithFetcher(newFetcher(out, localDocker)),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create pack client: %w", err)

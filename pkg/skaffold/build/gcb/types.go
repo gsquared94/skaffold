@@ -23,7 +23,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/constants"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/runner/runcontext"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 )
@@ -80,6 +79,7 @@ type Builder struct {
 	*latest.GoogleCloudBuild
 	skipTests          bool
 	insecureRegistries map[string]bool
+	suppressLogs       []string
 }
 
 // NewBuilder creates a new Builder that builds artifacts with Google Cloud Build.
@@ -88,13 +88,7 @@ func NewBuilder(runCtx *runcontext.RunContext) *Builder {
 		GoogleCloudBuild:   runCtx.Cfg.Build.GoogleCloudBuild,
 		skipTests:          runCtx.Opts.SkipTests,
 		insecureRegistries: runCtx.InsecureRegistries,
-	}
-}
-
-// Labels are labels specific to Google Cloud Build.
-func (b *Builder) Labels() map[string]string {
-	return map[string]string{
-		constants.Labels.Builder: "google-cloud-build",
+		suppressLogs:       runCtx.Opts.SuppressLogs,
 	}
 }
 

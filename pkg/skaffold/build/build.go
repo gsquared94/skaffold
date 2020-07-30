@@ -34,8 +34,6 @@ type Artifact struct {
 // This could include pushing to a authorized repository or loading the nodes with the image.
 // If artifacts is supplied, the builder should only rebuild those artifacts.
 type Builder interface {
-	Labels() map[string]string
-
 	Build(ctx context.Context, out io.Writer, artifacts []*latest.Artifact, options []BuilderOptions) ([]Artifact, error)
 
 	// Prune removes images built with Skaffold

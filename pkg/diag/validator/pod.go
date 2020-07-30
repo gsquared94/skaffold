@@ -46,6 +46,7 @@ const (
 	imagePullBackOff    = "ImagePullBackOff"
 	errImagePullBackOff = "ErrImagePullBackOff"
 	containerCreating   = "ContainerCreating"
+	podInitializing     = "PodInitializing"
 	podKind             = "pod"
 
 	failedScheduling = "FailedScheduling"
@@ -57,6 +58,13 @@ var (
 	taintsRe       = regexp.MustCompile(taintsExp)
 	// for testing
 	runCli = executeCLI
+
+	unknownConditionsOrSuccess = map[proto.StatusCode]struct{}{
+		proto.StatusCode_STATUSCHECK_UNKNOWN:                   {},
+		proto.StatusCode_STATUSCHECK_CONTAINER_WAITING_UNKNOWN: {},
+		proto.StatusCode_STATUSCHECK_UNKNOWN_UNSCHEDULABLE:     {},
+		proto.StatusCode_STATUSCHECK_SUCCESS:                   {},
+	}
 )
 
 // PodValidator implements the Validator interface for Pods
@@ -140,6 +148,9 @@ func getWaitingContainerStatus(po *v1.Pod, cs []v1.ContainerStatus) (proto.Statu
 		case c.State.Waiting != nil:
 			return extractErrorMessageFromWaitingContainerStatus(po, c)
 		case c.State.Terminated != nil:
+			if c.State.Terminated.ExitCode == 0 {
+				return proto.StatusCode_STATUSCHECK_SUCCESS, nil, nil
+			}
 			l := getPodLogs(po, c.Name)
 			return proto.StatusCode_STATUSCHECK_CONTAINER_TERMINATED, l, fmt.Errorf("container %s terminated with exit code %d", c.Name, c.State.Terminated.ExitCode)
 		}
@@ -197,6 +208,9 @@ func getUntoleratedTaints(reason string, message string) (proto.StatusCode, erro
 }
 
 func processPodEvents(e corev1.EventInterface, pod v1.Pod, ps *podStatus) {
+	if _, ok := unknownConditionsOrSuccess[ps.ae.ErrCode]; !ok {
+		return
+	}
 	// Get pod events.
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypes(v1.SchemeGroupVersion, &pod)
@@ -273,8 +287,11 @@ func (p *podStatus) String() string {
 }
 
 func extractErrorMessageFromWaitingContainerStatus(po *v1.Pod, c v1.ContainerStatus) (proto.StatusCode, []string, error) {
-	switch c.State.Waiting.Reason {
 	// Extract meaning full error out of container statuses.
+	switch c.State.Waiting.Reason {
+	case podInitializing:
+		// container is waiting to run
+		return proto.StatusCode_STATUSCHECK_SUCCESS, nil, nil
 	case containerCreating:
 		return proto.StatusCode_STATUSCHECK_CONTAINER_CREATING, nil, fmt.Errorf("creating container %s", c.Name)
 	case crashLoopBackOff:
@@ -289,7 +306,8 @@ func extractErrorMessageFromWaitingContainerStatus(po *v1.Pod, c v1.ContainerSta
 			return proto.StatusCode_STATUSCHECK_RUN_CONTAINER_ERR, nil, fmt.Errorf("container %s in error: %s", c.Name, trimSpace(match[3]))
 		}
 	}
-	return proto.StatusCode_STATUSCHECK_CONTAINER_WAITING_UNKNOWN, nil, fmt.Errorf("container %s in error: %s", c.Name, trimSpace(c.State.Waiting.Message))
+	logrus.Debugf("Failed to extract error condition for waiting container %q: %v", c.Name, c.State)
+	return proto.StatusCode_STATUSCHECK_CONTAINER_WAITING_UNKNOWN, nil, fmt.Errorf("container %s in error: %v", c.Name, c.State.Waiting)
 }
 
 func newPodStatus(n string, ns string, p string) *podStatus {
@@ -314,6 +332,10 @@ func getPodLogs(po *v1.Pod, c string) []string {
 		return []string{fmt.Sprintf("Error retrieving logs for pod %s. Try `%s`", po.Name, strings.Join(logCommand, " "))}
 	}
 	lines := strings.Split(string(logs), "\n")
+	// remove spurious empty lines (empty string or from trailing newline)
+	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
+		lines = lines[:len(lines)-1]
+	}
 	for i, s := range lines {
 		lines[i] = fmt.Sprintf("[%s %s] %s", po.Name, c, s)
 	}
