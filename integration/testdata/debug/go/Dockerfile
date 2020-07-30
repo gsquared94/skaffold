@@ -2,7 +2,7 @@ FROM golang:1.12 as builder
 
 COPY app.go .
 ARG SKAFFOLD_GO_GCFLAGS
-ARG SKAFFOLD_LD_GCFLAGS
+ARG SKAFFOLD_GO_LDFLAGS
 # Must use eval to handle gcflags with spaces like `all=-N -l`
 RUN eval go build -gcflags="${SKAFFOLD_GO_GCFLAGS}" -ldflags="${SKAFFOLD_GO_LDFLAGS}" -o /app .
 
