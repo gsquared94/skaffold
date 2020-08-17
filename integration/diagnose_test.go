@@ -36,6 +36,9 @@ func TestDiagnose(t *testing.T) {
 
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
+			if example == "bazel" && IsGithubActionRun() {
+				t.Skip("skipping bazel diagnose test on Github Actions due to https://github.com/GoogleContainerTools/skaffold/issues/4617")
+			}
 			dir := filepath.Join("examples", example)
 
 			if _, err := os.Stat(filepath.Join(dir, "skaffold.yaml")); os.IsNotExist(err) {

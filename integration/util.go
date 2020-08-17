@@ -90,6 +90,10 @@ func RunOnGCP() bool {
 	return os.Getenv("GCP_ONLY") == "true"
 }
 
+func IsGithubActionRun() bool {
+	return os.Getenv("GITHUB_ACTIONS") == "true"
+}
+
 func Run(t *testing.T, dir, command string, args ...string) {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
