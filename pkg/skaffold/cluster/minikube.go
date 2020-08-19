@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Skaffold Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cluster
 
 import (
@@ -15,30 +31,50 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/constants"
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes"
+	k8s "github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes/client"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes/context"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 )
 
-// IsMinikube returns true if the given kubeContext maps to a minikube cluster
-func IsMinikube(kubeContext string) (bool, error) {
+var GetClient = getClient
+
+// To override during tests
+var (
+	mkBinaryFunc  = minikubeBinary
+	k8sConfigFunc = context.GetRestClientConfig
+)
+
+type Client interface {
+	// IsMinikube returns true if the given kubeContext maps to a minikube cluster
+	IsMinikube(kubeContext string) (bool, error)
+	// MinikubeExec returns the Cmd struct to execute minikube with given arguments
+	MinikubeExec(arg ...string) (*exec.Cmd, error)
+}
+
+type clientImpl struct{}
+
+func getClient() Client {
+	return clientImpl{}
+}
+
+func (clientImpl) IsMinikube(kubeContext string) (bool, error) {
 	// short circuit if context is 'minikube'
 	if kubeContext == constants.DefaultMinikubeContext {
 		return true, nil
 	}
-	_, err := minikubeBinary()
+	_, err := mkBinaryFunc()
 	if err != nil {
 		return false, nil // minikube binary not found
 	}
 
-	if ok, err := matchNodeLabel(); err != nil {
+	if ok, err := matchNodeLabel(kubeContext); err != nil {
 		return false, nil
 	} else if ok {
 		logrus.Debugf("Detected minikube cluster for context %s due to matched labels", kubeContext)
 		return true, nil
 	}
 
-	if ok, err := matchProfileAndServerUrl(kubeContext); err != nil {
+	if ok, err := matchProfileAndServerURL(kubeContext); err != nil {
 		return false, nil
 	} else if ok {
 		logrus.Debugf("Detected minikube cluster for context %s due to matched profile name or server url", kubeContext)
@@ -47,9 +83,12 @@ func IsMinikube(kubeContext string) (bool, error) {
 	return false, nil
 }
 
-// MinikubeExec returns the Cmd struct to execute minikube with given arguments
-func MinikubeExec(arg ...string) (*exec.Cmd, error) {
-	b, err := minikubeBinary()
+func (clientImpl) MinikubeExec(arg ...string) (*exec.Cmd, error) {
+	return minikubeExec(arg...)
+}
+
+func minikubeExec(arg ...string) (*exec.Cmd, error) {
+	b, err := mkBinaryFunc()
 	if err != nil {
 		return nil, fmt.Errorf("getting minikube executable: %w", err)
 	}
@@ -71,14 +110,14 @@ func minikubeBinary() (string, error) {
 	return filename, nil
 }
 
-func matchNodeLabel() (bool, error) {
-	client, err := kubernetes.Client()
+func matchNodeLabel(profileName string) (bool, error) {
+	client, err := k8s.Client()
 	if err != nil {
 		return false, fmt.Errorf("getting Kubernetes client: %w", err)
 	}
 	opts := v1.ListOptions{
-		LabelSelector: "minikube.k8s.io/name=minikube",
-		Limit:         1,
+		LabelSelector: fmt.Sprintf("minikube.k8s.io/name=%s", profileName),
+		Limit:         100,
 	}
 	l, err := client.CoreV1().Nodes().List(opts)
 	if err != nil {
@@ -87,30 +126,30 @@ func matchNodeLabel() (bool, error) {
 	return l != nil && len(l.Items) > 0, nil
 }
 
-// matchProfileAndServerUrl checks if kubecontext matches any valid minikube profile
+// matchProfileAndServerURL checks if kubecontext matches any valid minikube profile
 // and for selected drivers if the k8s server url is same as any of the minikube nodes IPs
-func matchProfileAndServerUrl(kubeContext string) (bool, error) {
-	config, err := context.GetRestClientConfig()
+func matchProfileAndServerURL(kubeContext string) (bool, error) {
+	config, err := k8sConfigFunc()
 	if err != nil {
 		return false, fmt.Errorf("getting kubernetes config: %w", err)
 	}
-	apiServerUrl, _, err := rest.DefaultServerURL(config.Host, config.APIPath, schema.GroupVersion{}, false)
+	apiServerURL, _, err := rest.DefaultServerURL(config.Host, config.APIPath, schema.GroupVersion{}, false)
 
 	if err != nil {
 		return false, fmt.Errorf("getting kubernetes server url: %w", err)
 	}
 
-	logrus.Debugf("kubernetes server url: %s", apiServerUrl)
+	logrus.Debugf("kubernetes server url: %s", apiServerURL)
 
-	ok, err := matchServerUrlFor(kubeContext, apiServerUrl)
+	ok, err := matchServerURLFor(kubeContext, apiServerURL)
 	if err != nil {
 		return false, fmt.Errorf("checking minikube node url: %w", err)
 	}
 	return ok, nil
 }
 
-func matchServerUrlFor(profileName string, serverUrl *url.URL) (bool, error) {
-	cmd, err := MinikubeExec("profile", "list", "-o", "json")
+func matchServerURLFor(profileName string, serverURL *url.URL) (bool, error) {
+	cmd, err := minikubeExec("profile", "list", "-o", "json")
 	if err != nil {
 		return false, fmt.Errorf("executing minikube command: %w", err)
 	}
@@ -136,7 +175,7 @@ func matchServerUrlFor(profileName string, serverUrl *url.URL) (bool, error) {
 			return true, nil
 		}
 		for _, n := range v.Config.Nodes {
-			if serverUrl.Host == fmt.Sprintf("%s:%d", n.IP, n.Port) {
+			if serverURL.Host == fmt.Sprintf("%s:%d", n.IP, n.Port) {
 				return true, nil
 			}
 		}

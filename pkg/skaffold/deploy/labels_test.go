@@ -28,7 +28,7 @@ import (
 	fakeclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	k8s "github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes"
+	k8s "github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes/client"
 	"github.com/GoogleContainerTools/skaffold/testutil"
 )
 

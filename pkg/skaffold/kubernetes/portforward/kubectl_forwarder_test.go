@@ -35,7 +35,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubectl"
-	pkgkubernetes "github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes"
+	k8s "github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes/client"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/testutil"
 )
@@ -399,7 +399,7 @@ func TestFindNewestPodForService(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			t.Override(&pkgkubernetes.Client, func() (kubernetes.Interface, error) {
+			t.Override(&k8s.Client, func() (kubernetes.Interface, error) {
 				return fake.NewSimpleClientset(test.clientResources...), test.clientErr
 			})
 

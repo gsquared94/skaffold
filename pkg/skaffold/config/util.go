@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/cluster"
 	"github.com/imdario/mergo"
 	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/cluster"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/constants"
 	kubectx "github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes/context"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
@@ -221,7 +221,7 @@ func isDefaultLocal(kubeContext string) (bool, error) {
 		kubeContext == constants.DefaultDockerDesktopContext {
 		return true, nil
 	}
-	isMinikube, err := cluster.IsMinikube(kubeContext)
+	isMinikube, err := cluster.GetClient().IsMinikube(kubeContext)
 	if err != nil {
 		return false, err
 	}

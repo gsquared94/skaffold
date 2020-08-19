@@ -19,9 +19,11 @@ package local
 import (
 	"context"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/cluster"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/runner/runcontext"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
@@ -76,6 +78,7 @@ func TestDockerCLIBuild(t *testing.T) {
 				"docker build . --file "+dockerfilePath+" -t tag --force-rm",
 				test.expectedEnv,
 			))
+			t.Override(&cluster.GetClient, func() cluster.Client { return fakeMinikubeClient{} })
 			t.Override(&util.OSEnviron, func() []string { return []string{"KEY=VALUE"} })
 			t.Override(&docker.NewAPIClient, func(*runcontext.RunContext) (docker.LocalDaemon, error) {
 				return docker.NewLocalDaemon(&testutil.FakeAPIClient{}, test.extraEnv, false, nil), nil
@@ -97,4 +100,11 @@ func TestDockerCLIBuild(t *testing.T) {
 			t.CheckNoError(err)
 		})
 	}
+}
+
+type fakeMinikubeClient struct{}
+
+func (fakeMinikubeClient) IsMinikube(kubeContext string) (bool, error) { return false, nil }
+func (fakeMinikubeClient) MinikubeExec(arg ...string) (*exec.Cmd, error) {
+	return exec.Command("minikube", arg...), nil
 }

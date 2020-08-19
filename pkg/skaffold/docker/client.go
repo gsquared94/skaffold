@@ -71,7 +71,7 @@ func newAPIClient(kubeContext string, minikubeProfile string) ([]string, client.
 		return newMinikubeAPIClient(minikubeProfile)
 	}
 
-	isMinikube, err := cluster.IsMinikube(kubeContext)
+	isMinikube, err := cluster.GetClient().IsMinikube(kubeContext)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,7 +175,7 @@ func getMinikubeDockerEnv(minikubeProfile string) (map[string]string, error) {
 	if minikubeProfile == "" {
 		return nil, fmt.Errorf("empty minikube profile")
 	}
-	cmd, err := cluster.MinikubeExec("docker-env", "--shell", "none", "-p", minikubeProfile)
+	cmd, err := cluster.GetClient().MinikubeExec("docker-env", "--shell", "none", "-p", minikubeProfile)
 	if err != nil {
 		return nil, fmt.Errorf("executing minikube command: %w", err)
 	}
