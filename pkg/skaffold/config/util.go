@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/cluster"
 	"github.com/imdario/mergo"
 	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
@@ -188,7 +189,7 @@ func GetLocalCluster(configFile string, minikubeProfile string) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	return isDefaultLocal(config.CurrentContext), nil
+	return isDefaultLocal(config.CurrentContext)
 }
 
 func GetInsecureRegistries(configFile string) ([]string, error) {
@@ -215,14 +216,17 @@ func GetDebugHelpersRegistry(configFile string) (string, error) {
 	return constants.DefaultDebugHelpersRegistry, nil
 }
 
-func isDefaultLocal(kubeContext string) bool {
-	if kubeContext == constants.DefaultMinikubeContext ||
-		kubeContext == constants.DefaultDockerForDesktopContext ||
+func isDefaultLocal(kubeContext string) (bool, error) {
+	if kubeContext == constants.DefaultDockerForDesktopContext ||
 		kubeContext == constants.DefaultDockerDesktopContext {
-		return true
+		return true, nil
+	}
+	isMinikube, err := cluster.IsMinikube(kubeContext)
+	if err != nil {
+		return false, err
 	}
 
-	return IsKindCluster(kubeContext) || IsK3dCluster(kubeContext)
+	return isMinikube || IsKindCluster(kubeContext) || IsK3dCluster(kubeContext), nil
 }
 
 // IsImageLoadingRequired checks if the cluster requires loading images into it

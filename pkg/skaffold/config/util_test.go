@@ -281,8 +281,8 @@ func TestIsDefaultLocal(t *testing.T) {
 	}
 	for _, test := range tests {
 		testutil.Run(t, "", func(t *testutil.T) {
-			local := isDefaultLocal(test.context)
-
+			local, err := isDefaultLocal(test.context)
+			t.CheckNoError(err)
 			t.CheckDeepEqual(test.expectedLocal, local)
 		})
 	}
