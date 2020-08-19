@@ -196,6 +196,10 @@ func getDeployer(runCtx *runcontext.RunContext, labels map[string]string) deploy
 		deployers = append(deployers, deploy.NewHelmDeployer(runCtx, labels))
 	}
 
+	if d.KptDeploy != nil {
+		deployers = append(deployers, deploy.NewKptDeployer(runCtx, labels))
+	}
+
 	if d.KubectlDeploy != nil {
 		deployers = append(deployers, deploy.NewKubectlDeployer(runCtx, labels))
 	}
