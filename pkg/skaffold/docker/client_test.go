@@ -159,7 +159,7 @@ func (e *badUsageErr) ExitCode() int { return 64 }
 
 type fakeMinikubeClient struct{}
 
-func (fakeMinikubeClient) IsMinikube(kubeContext string) (bool, error) { return false, nil }
+func (fakeMinikubeClient) IsMinikube(kubeContext string) bool { return false }
 func (fakeMinikubeClient) MinikubeExec(arg ...string) (*exec.Cmd, error) {
 	return exec.Command("minikube", arg...), nil
 }

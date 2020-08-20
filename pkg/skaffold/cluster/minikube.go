@@ -46,7 +46,7 @@ var (
 
 type Client interface {
 	// IsMinikube returns true if the given kubeContext maps to a minikube cluster
-	IsMinikube(kubeContext string) (bool, error)
+	IsMinikube(kubeContext string) bool
 	// MinikubeExec returns the Cmd struct to execute minikube with given arguments
 	MinikubeExec(arg ...string) (*exec.Cmd, error)
 }
@@ -57,30 +57,32 @@ func getClient() Client {
 	return clientImpl{}
 }
 
-func (clientImpl) IsMinikube(kubeContext string) (bool, error) {
+func (clientImpl) IsMinikube(kubeContext string) bool {
 	// short circuit if context is 'minikube'
 	if kubeContext == constants.DefaultMinikubeContext {
-		return true, nil
+		return true
 	}
 	_, err := mkBinaryFunc()
 	if err != nil {
-		return false, nil // minikube binary not found
+		return false // minikube binary not found
 	}
 
 	if ok, err := matchNodeLabel(kubeContext); err != nil {
-		return false, nil
+		logrus.Debugf("failed to check minikube node labels: %v", err)
+		return false
 	} else if ok {
 		logrus.Debugf("Detected minikube cluster for context %s due to matched labels", kubeContext)
-		return true, nil
+		return true
 	}
 
 	if ok, err := matchProfileAndServerURL(kubeContext); err != nil {
-		return false, nil
+		logrus.Debugf("failed to match minikube profile: %v", err)
+		return false
 	} else if ok {
 		logrus.Debugf("Detected minikube cluster for context %s due to matched profile name or server url", kubeContext)
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
 func (clientImpl) MinikubeExec(arg ...string) (*exec.Cmd, error) {

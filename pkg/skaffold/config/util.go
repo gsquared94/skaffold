@@ -189,7 +189,7 @@ func GetLocalCluster(configFile string, minikubeProfile string) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	return isDefaultLocal(config.CurrentContext)
+	return isDefaultLocal(config.CurrentContext), nil
 }
 
 func GetInsecureRegistries(configFile string) ([]string, error) {
@@ -216,17 +216,12 @@ func GetDebugHelpersRegistry(configFile string) (string, error) {
 	return constants.DefaultDebugHelpersRegistry, nil
 }
 
-func isDefaultLocal(kubeContext string) (bool, error) {
-	if kubeContext == constants.DefaultDockerForDesktopContext ||
-		kubeContext == constants.DefaultDockerDesktopContext {
-		return true, nil
-	}
-	isMinikube, err := cluster.GetClient().IsMinikube(kubeContext)
-	if err != nil {
-		return false, err
-	}
-
-	return isMinikube || IsKindCluster(kubeContext) || IsK3dCluster(kubeContext), nil
+func isDefaultLocal(kubeContext string) bool {
+	return kubeContext == constants.DefaultDockerForDesktopContext ||
+		kubeContext == constants.DefaultDockerDesktopContext ||
+		cluster.GetClient().IsMinikube(kubeContext) ||
+		IsKindCluster(kubeContext) ||
+		IsK3dCluster(kubeContext)
 }
 
 // IsImageLoadingRequired checks if the cluster requires loading images into it

@@ -40,7 +40,6 @@ func TestClientImpl_IsMinikube(t *testing.T) {
 		minikubeProfileCmd util.Command
 		minikubeNotInPath  bool
 		expected           bool
-		shouldErr          bool
 	}{
 		{
 			description: "context is 'minikube'",
@@ -127,8 +126,8 @@ func TestClientImpl_IsMinikube(t *testing.T) {
 			t.Override(&k8s.Client, mockClient(client))
 			t.Override(&k8sConfigFunc, func() (*rest.Config, error) { return &test.config, nil })
 
-			ok, err := GetClient().IsMinikube(test.kubeContext)
-			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expected, ok)
+			ok := GetClient().IsMinikube(test.kubeContext)
+			t.CheckDeepEqual(test.expected, ok)
 		})
 	}
 }

@@ -71,12 +71,7 @@ func newAPIClient(kubeContext string, minikubeProfile string) ([]string, client.
 		return newMinikubeAPIClient(minikubeProfile)
 	}
 
-	isMinikube, err := cluster.GetClient().IsMinikube(kubeContext)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if isMinikube {
+	if cluster.GetClient().IsMinikube(kubeContext) {
 		return newMinikubeAPIClient(kubeContext)
 	}
 	return newEnvAPIClient()
