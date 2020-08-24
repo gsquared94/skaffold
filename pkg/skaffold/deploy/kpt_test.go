@@ -17,11 +17,16 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/runner/runcontext"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
@@ -167,7 +172,7 @@ func TestKpt_Dependencies(t *testing.T) {
 
 			res, err := k.Dependencies()
 
-			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expected, res)
+			t.CheckErrorAndDeepEqual(test.shouldErr, err, tmpDir.Paths(test.expected...), tmpDir.Paths(res...))
 		})
 	}
 }
@@ -175,33 +180,319 @@ func TestKpt_Dependencies(t *testing.T) {
 func TestKpt_Cleanup(t *testing.T) {
 	tests := []struct {
 		description string
+		applyDir    string
+		commands    util.Command
 		shouldErr   bool
 	}{
 		{
-			description: "nil",
+			description: "invalid user specified applyDir",
+			applyDir:    "invalid_path",
+			shouldErr:   true,
+		},
+		{
+			description: "valid user specified applyDir w/o template resource",
+			applyDir:    "valid_path",
+			commands:    testutil.CmdRunOutErr("kpt live destroy valid_path", "", errors.New("BUG")),
+			shouldErr:   true,
+		},
+		{
+			description: "valid user specified applyDir w/ template resource (emulated)",
+			applyDir:    "valid_path",
+			commands:    testutil.CmdRunOut("kpt live destroy valid_path", ""),
+		},
+		{
+			description: "unspecified applyDir",
+			commands: testutil.
+				CmdRunOut("kpt live init .kpt-hydrated", "").
+				AndRunOut("kpt live destroy .kpt-hydrated", ""),
 		},
 	}
 	for _, test := range tests {
 		testutil.Run(t, test.description, func(t *testutil.T) {
-			k := NewKptDeployer(&runcontext.RunContext{}, nil)
-			err := k.Cleanup(context.Background(), nil)
+			t.Override(&util.DefaultExecCommand, test.commands)
+			t.NewTempDir().Chdir()
+
+			if test.applyDir == "valid_path" {
+				os.Mkdir(test.applyDir, 0755)
+			}
+
+			k := NewKptDeployer(&runcontext.RunContext{
+				WorkingDir: ".",
+				Cfg: latest.Pipeline{
+					Deploy: latest.DeployConfig{
+						DeployType: latest.DeployType{
+							KptDeploy: &latest.KptDeploy{
+								ApplyDir: test.applyDir,
+							},
+						},
+					},
+				},
+				KubeContext: testKubeContext,
+				Opts: config.SkaffoldOptions{
+					Namespace: testNamespace,
+				},
+			}, nil)
+
+			err := k.Cleanup(context.Background(), ioutil.Discard)
+
 			t.CheckError(test.shouldErr, err)
 		})
 	}
 }
 
 func TestKpt_Render(t *testing.T) {
+	output1 := `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1
+    name: image1
+`
+
+	output2 := `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image2
+    name: image2
+`
+
+	output3 := `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1
+    name: image1
+  - image: gcr.io/project/image2
+    name: image2
+`
+
+	output4 := `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1
+    name: image1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image2
+    name: image2
+`
+
 	tests := []struct {
 		description string
+		builds      []build.Artifact
+		labels      map[string]string
+		cfg         *latest.KptDeploy
+		commands    util.Command
+		expected    string
 		shouldErr   bool
 	}{
-		{},
+		{
+			description: "no fnPath or image specified",
+			builds: []build.Artifact{
+				{
+					ImageName: "gcr.io/project/image1",
+					Tag:       "gcr.io/project/image1:tag1",
+				},
+			},
+			cfg: &latest.KptDeploy{
+				Dir: ".",
+			},
+			commands: testutil.CmdRunOut("kpt fn run . --dry-run", output1),
+			expected: `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1:tag1
+    name: image1
+`,
+		},
+		{
+			description: "fnPath specified",
+			builds: []build.Artifact{
+				{
+					ImageName: "gcr.io/project/image2",
+					Tag:       "gcr.io/project/image2:tag2",
+				},
+			},
+			cfg: &latest.KptDeploy{
+				Dir: "test",
+				Fn:  latest.KptFn{FnPath: "kpt-func.yaml"},
+			},
+			commands: testutil.CmdRunOut("kpt fn run test --dry-run --fn-path kpt-func.yaml", output2),
+			expected: `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image2:tag2
+    name: image2
+`,
+		},
+		{
+			description: "image specified",
+			builds: []build.Artifact{
+				{
+					ImageName: "gcr.io/project/image1",
+					Tag:       "gcr.io/project/image1:tag1",
+				},
+				{
+					ImageName: "gcr.io/project/image2",
+					Tag:       "gcr.io/project/image2:tag2",
+				},
+			},
+			cfg: &latest.KptDeploy{
+				Dir: "test",
+				Fn:  latest.KptFn{Image: "gcr.io/example.com/my-fn:v1.0.0 -- foo=bar"},
+			},
+			commands: testutil.CmdRunOut("kpt fn run test --dry-run --image gcr.io/example.com/my-fn:v1.0.0 -- foo=bar", output3),
+			expected: `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1:tag1
+    name: image1
+  - image: gcr.io/project/image2:tag2
+    name: image2
+`,
+		},
+		{
+			description: "multiple resources outputted",
+			builds: []build.Artifact{
+				{
+					ImageName: "gcr.io/project/image1",
+					Tag:       "gcr.io/project/image1:tag1",
+				},
+				{
+					ImageName: "gcr.io/project/image2",
+					Tag:       "gcr.io/project/image2:tag2",
+				},
+			},
+			cfg: &latest.KptDeploy{
+				Dir: "test",
+				Fn:  latest.KptFn{FnPath: "kpt-func.yaml"},
+			},
+			commands: testutil.CmdRunOut("kpt fn run test --dry-run --fn-path kpt-func.yaml", output4),
+			expected: `apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1:tag1
+    name: image1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image2:tag2
+    name: image2
+`,
+		},
+		{
+			description: "user labels",
+			builds: []build.Artifact{
+				{
+					ImageName: "gcr.io/project/image1",
+					Tag:       "gcr.io/project/image1:tag1",
+				},
+			},
+			labels: map[string]string{"user/label": "test"},
+			cfg: &latest.KptDeploy{
+				Dir: ".",
+			},
+			commands: testutil.CmdRunOut("kpt fn run . --dry-run", output1),
+			expected: `apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    user/label: test
+  namespace: default
+spec:
+  containers:
+  - image: gcr.io/project/image1:tag1
+    name: image1
+`,
+		},
+		{
+			description: "empty output from pipeline",
+			builds: []build.Artifact{
+				{
+					ImageName: "gcr.io/project/image1",
+					Tag:       "gcr.io/project/image1:tag1",
+				},
+			},
+			labels: map[string]string{"user/label": "test"},
+			cfg: &latest.KptDeploy{
+				Dir: ".",
+			},
+			commands: testutil.CmdRunOut("kpt fn run . --dry-run", ``),
+			expected: "\n",
+		},
+		{
+			description: "kpt fn run fails",
+			cfg: &latest.KptDeploy{
+				Dir: ".",
+			},
+			commands:  testutil.CmdRunOutErr("kpt fn run . --dry-run", "invalid pipeline", errors.New("BUG")),
+			shouldErr: true,
+		},
+		{
+			description: "both fnPath and image specified",
+			cfg: &latest.KptDeploy{
+				Dir: "test",
+				Fn: latest.KptFn{
+					FnPath: "kpt-func.yaml",
+					Image:  "gcr.io/example.com/my-fn:v1.0.0 -- foo=bar"},
+			},
+			shouldErr: true,
+		},
 	}
 	for _, test := range tests {
 		testutil.Run(t, test.description, func(t *testutil.T) {
-			k := NewKptDeployer(&runcontext.RunContext{}, nil)
-			err := k.Render(context.Background(), nil, nil, false, "")
-			t.CheckError(test.shouldErr, err)
+			t.Override(&util.DefaultExecCommand, test.commands)
+
+			k := NewKptDeployer(&runcontext.RunContext{
+				WorkingDir: ".",
+				Cfg: latest.Pipeline{
+					Deploy: latest.DeployConfig{
+						DeployType: latest.DeployType{
+							KptDeploy: test.cfg,
+						},
+					},
+				},
+				KubeContext: testKubeContext,
+				Opts: config.SkaffoldOptions{
+					Namespace: testNamespace,
+				},
+			}, test.labels)
+
+			var b bytes.Buffer
+			err := k.Render(context.Background(), &b, test.builds, true, "")
+
+			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expected, b.String())
 		})
 	}
 }
@@ -227,7 +518,7 @@ func TestKpt_GetApplyDir(t *testing.T) {
 		{
 			description: "unspecified applyDir",
 			expected:    ".kpt-hydrated",
-			commands:    testutil.CmdRun("kpt live init .kpt-hydrated"),
+			commands:    testutil.CmdRunOut("kpt live init .kpt-hydrated", ""),
 		},
 		{
 			description: "existing template resource in .kpt-hydrated",
