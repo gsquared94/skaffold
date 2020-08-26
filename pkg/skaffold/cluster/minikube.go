@@ -40,8 +40,8 @@ var GetClient = getClient
 
 // To override during tests
 var (
-	mkBinaryFunc  = minikubeBinary
-	k8sConfigFunc = context.GetRestClientConfig
+	minikubeBinaryFunc      = minikubeBinary
+	getRestClientConfigFunc = context.GetRestClientConfig
 )
 
 type Client interface {
@@ -62,26 +62,25 @@ func (clientImpl) IsMinikube(kubeContext string) bool {
 	if kubeContext == constants.DefaultMinikubeContext {
 		return true
 	}
-	_, err := mkBinaryFunc()
+	_, err := minikubeBinaryFunc()
 	if err != nil {
 		return false // minikube binary not found
 	}
 
 	if ok, err := matchNodeLabel(kubeContext); err != nil {
 		logrus.Debugf("failed to check minikube node labels: %v", err)
-		return false
 	} else if ok {
-		logrus.Debugf("Detected minikube cluster for context %s due to matched labels", kubeContext)
+		logrus.Debugf("Minikube cluster detected: context %q nodes have minikube labels", kubeContext)
 		return true
 	}
 
 	if ok, err := matchProfileAndServerURL(kubeContext); err != nil {
 		logrus.Debugf("failed to match minikube profile: %v", err)
-		return false
 	} else if ok {
-		logrus.Debugf("Detected minikube cluster for context %s due to matched profile name or server url", kubeContext)
+		logrus.Debugf("Minikube cluster detected: context %q has matching profile name or server url", kubeContext)
 		return true
 	}
+	logrus.Debugf("Minikube cluster not detected for context %q", kubeContext)
 	return false
 }
 
@@ -90,7 +89,7 @@ func (clientImpl) MinikubeExec(arg ...string) (*exec.Cmd, error) {
 }
 
 func minikubeExec(arg ...string) (*exec.Cmd, error) {
-	b, err := mkBinaryFunc()
+	b, err := minikubeBinaryFunc()
 	if err != nil {
 		return nil, fmt.Errorf("getting minikube executable: %w", err)
 	}
@@ -131,7 +130,7 @@ func matchNodeLabel(profileName string) (bool, error) {
 // matchProfileAndServerURL checks if kubecontext matches any valid minikube profile
 // and for selected drivers if the k8s server url is same as any of the minikube nodes IPs
 func matchProfileAndServerURL(kubeContext string) (bool, error) {
-	config, err := k8sConfigFunc()
+	config, err := getRestClientConfigFunc()
 	if err != nil {
 		return false, fmt.Errorf("getting kubernetes config: %w", err)
 	}

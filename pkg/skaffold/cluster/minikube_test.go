@@ -118,13 +118,13 @@ func TestClientImpl_IsMinikube(t *testing.T) {
 				}},
 			})
 			if test.minikubeNotInPath {
-				t.Override(&mkBinaryFunc, func() (string, error) { return "", fmt.Errorf("minikube not in PATH") })
+				t.Override(&minikubeBinaryFunc, func() (string, error) { return "", fmt.Errorf("minikube not in PATH") })
 			} else {
-				t.Override(&mkBinaryFunc, func() (string, error) { return "minikube", nil })
+				t.Override(&minikubeBinaryFunc, func() (string, error) { return "minikube", nil })
 			}
 			t.Override(&util.DefaultExecCommand, test.minikubeProfileCmd)
 			t.Override(&k8s.Client, mockClient(client))
-			t.Override(&k8sConfigFunc, func() (*rest.Config, error) { return &test.config, nil })
+			t.Override(&getRestClientConfigFunc, func() (*rest.Config, error) { return &test.config, nil })
 
 			ok := GetClient().IsMinikube(test.kubeContext)
 			t.CheckDeepEqual(test.expected, ok)
