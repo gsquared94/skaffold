@@ -693,6 +693,9 @@ type Artifact struct {
 
 	// ArtifactType describes how to build an artifact.
 	ArtifactType `yaml:",inline"`
+
+	// Dependencies describes build artifacts that this artifact depends on
+	Dependencies []*ArtifactDependency `yaml:"requires, omitempty"`
 }
 
 // Sync *beta* specifies what files to sync into the container.
@@ -813,6 +816,12 @@ type ArtifactType struct {
 
 	// CustomArtifact *beta* builds images using a custom build script written by the user.
 	CustomArtifact *CustomArtifact `yaml:"custom,omitempty" yamltags:"oneOf=artifact"`
+}
+
+// ArtifactDependency describes a specific build dependency for an artifact
+type ArtifactDependency struct {
+	Alias string `yaml:"alias" yamltags:"required"`
+	ImageName string `yaml:"image" yamltags:"required"`
 }
 
 // BuildpackArtifact *alpha* describes an artifact built using [Cloud Native Buildpacks](https://buildpacks.io/).

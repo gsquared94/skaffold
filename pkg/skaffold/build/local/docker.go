@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
@@ -30,7 +31,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/warnings"
 )
 
-func (b *Builder) buildDocker(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, mode config.RunMode) (string, error) {
+func (b *Builder) buildDocker(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, mode config.RunMode, deps []build.ArtifactDependency) (string, error) {
 	// Fail fast if the Dockerfile can't be found.
 	dockerfile, err := docker.NormalizeDockerfilePath(a.Workspace, a.DockerArtifact.DockerfilePath)
 	if err != nil {

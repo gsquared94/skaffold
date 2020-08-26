@@ -37,6 +37,7 @@ var (
 func Process(config *latest.SkaffoldConfig) error {
 	errs := visitStructs(config, validateYamltags)
 	errs = append(errs, validateImageNames(config.Build.Artifacts)...)
+	errs = append(errs, validateArtifactDependencies(config.Build.Artifacts)...)
 	errs = append(errs, validateDockerNetworkMode(config.Build.Artifacts)...)
 	errs = append(errs, validateCustomDependencies(config.Build.Artifacts)...)
 	errs = append(errs, validateSyncRules(config.Build.Artifacts)...)
@@ -75,6 +76,43 @@ func validateImageNames(artifacts []*latest.Artifact) (errs []error) {
 		}
 	}
 	return
+}
+
+// validateArtifactDependencies makes sure all artifact dependencies are found and don't have cyclic references
+func validateArtifactDependencies(artifacts []*latest.Artifact) (errs []error) {
+	m := make(map[string]*latest.Artifact)
+	for _, artifact := range artifacts {
+		m[artifact.ImageName] = artifact
+	}
+	visited := make(map[string]bool)
+	for _, artifact := range artifacts {
+		if err := dfs(artifact, visited, make(map[string]bool), m); err != nil {
+			errs = append(errs, err)
+			return
+		}
+	}
+	return
+}
+
+func dfs(artifact *latest.Artifact, visited map[string]bool, marked map[string]bool, artifacts map[string]*latest.Artifact) error {
+	if visited[artifact.ImageName]{
+		return nil
+	}
+	if marked[artifact.ImageName] {
+		return fmt.Errorf("cycle detected in build dependencies involving '%s'", artifact.ImageName)
+	}
+	visited[artifact.ImageName] = true
+	for _, dep := range artifact.Dependencies {
+		d, found := artifacts[dep.ImageName]
+		if !found {
+			return fmt.Errorf("invalid build dependency '%s' for artifact '%s': not found", dep.ImageName, artifact.ImageName)
+		}
+		if err := dfs(d, visited, marked, artifacts); err != nil {
+			return err
+		}
+	}
+	marked[artifact.ImageName] = false
+	return nil
 }
 
 // validateDockerNetworkMode makes sure that networkMode is one of `bridge`, `none`, or `host` if set.
