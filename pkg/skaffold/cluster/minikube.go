@@ -111,13 +111,13 @@ func minikubeBinary() (string, error) {
 	return filename, nil
 }
 
-func matchNodeLabel(profileName string) (bool, error) {
+func matchNodeLabel(kubeContext string) (bool, error) {
 	client, err := k8s.Client()
 	if err != nil {
 		return false, fmt.Errorf("getting Kubernetes client: %w", err)
 	}
 	opts := v1.ListOptions{
-		LabelSelector: fmt.Sprintf("minikube.k8s.io/name=%s", profileName),
+		LabelSelector: fmt.Sprintf("minikube.k8s.io/name=%s", kubeContext),
 		Limit:         100,
 	}
 	l, err := client.CoreV1().Nodes().List(opts)
@@ -149,7 +149,7 @@ func matchProfileAndServerURL(kubeContext string) (bool, error) {
 	return ok, nil
 }
 
-func matchServerURLFor(profileName string, serverURL *url.URL) (bool, error) {
+func matchServerURLFor(kubeContext string, serverURL *url.URL) (bool, error) {
 	cmd, err := minikubeExec("profile", "list", "-o", "json")
 	if err != nil {
 		return false, fmt.Errorf("executing minikube command: %w", err)
@@ -166,7 +166,7 @@ func matchServerURLFor(profileName string, serverURL *url.URL) (bool, error) {
 	}
 
 	for _, v := range data.Valid {
-		if v.Config.Name != profileName {
+		if v.Config.Name != kubeContext {
 			continue
 		}
 
