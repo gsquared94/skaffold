@@ -20,10 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"time"
-
 	"github.com/sirupsen/logrus"
+	"io"
+	"sync"
+	"time"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/color"
@@ -33,7 +33,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/kubernetes/portforward"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/sync"
+	sksync "github.com/GoogleContainerTools/skaffold/pkg/skaffold/sync"
 	"github.com/GoogleContainerTools/skaffold/proto"
 )
 
@@ -95,7 +95,7 @@ func (r *SkaffoldRunner) doDev(ctx context.Context, out io.Writer, logger *kuber
 			r.intents.resetBuild()
 		}()
 
-		if _, err := r.BuildAndTest(ctx, out, r.changeSet.needsRebuild); err != nil {
+		if _, err := r.BuildAndTest(ctx, out, r.changeSet.needsRebuild, r.builds); err != nil {
 			logrus.Warnln("Skipping deploy due to error:", err)
 			event.DevLoopFailedInPhase(r.devIteration, sErrors.Build, err)
 			return nil
@@ -130,6 +130,8 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 	event.DevLoopInProgress(r.devIteration)
 	defer func() { r.devIteration++ }()
 
+	// artifact DAG
+	artifactDAG := getArtifactDAG(artifacts)
 	// Watch artifacts
 	start := time.Now()
 	color.Default.Fprintln(out, "Listing files to watch...")
@@ -151,14 +153,14 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 					return build.DependenciesForArtifact(ctx, artifact, r.runCtx.GetInsecureRegistries())
 				},
 				func(e filemon.Events) {
-					s, err := sync.NewItem(ctx, artifact, e, r.builds, r.runCtx.GetInsecureRegistries())
+					s, err := sksync.NewItem(ctx, artifact, e, r.builds, r.runCtx.GetInsecureRegistries())
 					switch {
 					case err != nil:
 						logrus.Warnf("error adding dirty artifact to changeset: %s", err.Error())
 					case s != nil:
 						r.changeSet.AddResync(s)
 					default:
-						r.changeSet.AddRebuild(artifact)
+						addRebuild(artifactDAG, artifact, r.changeSet.AddRebuild, r.runCtx.Opts.IsTargetImage)
 					}
 				},
 			); err != nil {
@@ -198,13 +200,13 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 	logrus.Infoln("List generated in", time.Since(start))
 
 	// Init Sync State
-	if err := sync.Init(ctx, artifacts); err != nil {
+	if err := sksync.Init(ctx, artifacts); err != nil {
 		event.DevLoopFailedWithErrorCode(r.devIteration, proto.StatusCode_SYNC_INIT_ERROR, err)
 		return fmt.Errorf("exiting dev mode because initializing sync state failed: %w", err)
 	}
 
 	// First build
-	bRes, err := r.BuildAndTest(ctx, out, artifacts)
+	bRes, err := r.BuildAndTest(ctx, out, artifacts, r.builds)
 	if err != nil {
 		event.DevLoopFailedInPhase(r.devIteration, sErrors.Build, err)
 		return fmt.Errorf("exiting dev mode because first build failed: %w", err)
@@ -245,4 +247,41 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 	return r.listener.WatchForChanges(ctx, out, func() error {
 		return r.doDev(ctx, out, logger, forwarderManager)
 	})
+}
+
+func addRebuild(dag *artifactDAG, artifact *latest.Artifact, rebuild func(*latest.Artifact), isTarget func(*latest.Artifact) bool) {
+	if isTarget(artifact) {
+		rebuild(artifact)
+	}
+	for _, a := range dag.allDependents(artifact) {
+		addRebuild(dag, a, rebuild, isTarget)
+	}
+}
+
+type artifactDAG struct {
+	m *sync.Map
+}
+
+func getArtifactDAG(artifacts []*latest.Artifact) *artifactDAG {
+	dag := &artifactDAG{m: new(sync.Map)}
+	for _, a := range artifacts {
+		for _, d := range a.Dependencies {
+			slice, ok := dag.m.Load(d.ImageName)
+			if !ok {
+				slice = make([]*latest.Artifact, 0)
+			} else {
+				slice = slice.([]*latest.Artifact)
+			}
+			dag.m.Store(d.ImageName, append(slice.([]*latest.Artifact), a))
+		}
+	}
+	return dag
+}
+
+func (dag *artifactDAG) allDependents(artifact *latest.Artifact) []*latest.Artifact {
+	slice, ok := dag.m.Load(artifact.ImageName)
+	if !ok {
+		return nil
+	}
+	return slice.([]*latest.Artifact)
 }

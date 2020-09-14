@@ -32,7 +32,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 )
 
-func (c *cache) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, buildAndTest BuildAndTestFn) ([]build.Artifact, error) {
+func (c *cache) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []build.Artifact, buildAndTest BuildAndTestFn) ([]build.Artifact, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -111,7 +111,7 @@ func (c *cache) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, ar
 
 	logrus.Infoln("Cache check complete in", time.Since(start))
 
-	bRes, err := buildAndTest(ctx, out, tags, needToBuild)
+	bRes, err := buildAndTest(ctx, out, tags, needToBuild, existing)
 	if err != nil {
 		return nil, err
 	}

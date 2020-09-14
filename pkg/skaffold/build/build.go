@@ -30,12 +30,18 @@ type Artifact struct {
 	Tag       string `json:"tag"`
 }
 
+// ArtifactRef represents a successfully built artifact referenced with an alias elsewhere.
+type ArtifactRef struct {
+	Artifact
+	Alias string `json:"alias"`
+}
+
 // Builder is an interface to the Build API of Skaffold.
 // It must build and make the resulting image accessible to the cluster.
 // This could include pushing to a authorized repository or loading the nodes with the image.
 // If artifacts is supplied, the builder should only rebuild those artifacts.
 type Builder interface {
-	Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact) ([]Artifact, error)
+	Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []Artifact) ([]Artifact, error)
 
 	// Prune removes images built with Skaffold
 	Prune(context.Context, io.Writer) error

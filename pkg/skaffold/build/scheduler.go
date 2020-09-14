@@ -31,7 +31,7 @@ import (
 
 const bufferedLinesPerArtifact = 10000
 
-type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error)
+type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, requiredArtifacts []Artifact) (string, error)
 
 // For testing
 var (
@@ -42,8 +42,12 @@ var (
 // `concurrency` specifies the max number of builds that can run at any one time. If concurrency is 0, then it's set to the length of the `artifacts` slice.
 // Each artifact build runs in its own goroutine. It limits the max concurrency using a buffered channel like a semaphore.
 // At the same time, it uses the `artifactChanModel` to model the artifacts dependency graph and to make each artifact build wait for its required artifacts' builds.
-func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, buildArtifact ArtifactBuilder, concurrency int) ([]Artifact, error) {
+func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []Artifact, builder ArtifactBuilder, concurrency int) ([]Artifact, error) {
 	acmSlice := makeArtifactChanModel(artifacts)
+	builtArtifactMap := new(sync.Map)
+	for _, b := range existing {
+		builtArtifactMap.Store(b.ImageName, b)
+	}
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -69,7 +73,7 @@ func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts [
 			acmSlice[i].waitForDependencies(ctx)
 			sem <- true
 			// Run build and write output/logs to piped writer and store build result in sync.Map
-			runBuild(ctx, w, tags, acmSlice[i].artifact, results, buildArtifact)
+			runBuild(ctx, w, tags, acmSlice[i].artifact, results, builder, builtArtifactMap)
 			acmSlice[i].markComplete()
 			<-sem
 
@@ -126,10 +130,10 @@ func makeArtifactChanModel(artifacts []*latest.Artifact) []artifactChanModel {
 	return acmSlice
 }
 
-func runBuild(ctx context.Context, cw io.WriteCloser, tags tag.ImageTags, artifact *latest.Artifact, results *sync.Map, build ArtifactBuilder) {
+func runBuild(ctx context.Context, cw io.WriteCloser, tags tag.ImageTags, artifact *latest.Artifact, results *sync.Map, build ArtifactBuilder, builtArtifacts *sync.Map) {
 	event.BuildInProgress(artifact.ImageName)
 
-	finalTag, err := getBuildResult(ctx, cw, tags, artifact, build)
+	finalTag, err := getBuildResult(ctx, cw, tags, artifact, build, builtArtifacts)
 	if err != nil {
 		event.BuildFailed(artifact.ImageName, err)
 		results.Store(artifact.ImageName, err)
@@ -137,6 +141,7 @@ func runBuild(ctx context.Context, cw io.WriteCloser, tags tag.ImageTags, artifa
 		event.BuildComplete(artifact.ImageName)
 		artifact := Artifact{ImageName: artifact.ImageName, Tag: finalTag}
 		results.Store(artifact.ImageName, artifact)
+		builtArtifacts.Store(artifact.ImageName, artifact)
 	}
 	cw.Close()
 }
@@ -149,13 +154,29 @@ func readOutputAndWriteToChannel(r io.Reader, lines chan string) {
 	close(lines)
 }
 
-func getBuildResult(ctx context.Context, cw io.Writer, tags tag.ImageTags, artifact *latest.Artifact, build ArtifactBuilder) (string, error) {
+func getBuildResult(ctx context.Context, cw io.Writer, tags tag.ImageTags, artifact *latest.Artifact, build ArtifactBuilder, builtArtifacts *sync.Map) (string, error) {
 	color.Default.Fprintf(cw, "Building [%s]...\n", artifact.ImageName)
 	tag, present := tags[artifact.ImageName]
 	if !present {
 		return "", fmt.Errorf("unable to find tag for image %s", artifact.ImageName)
 	}
-	return build(ctx, cw, artifact, tag)
+	required, err := getRequiredArtifacts(artifact, builtArtifacts)
+	if err != nil {
+		return "", err
+	}
+	return build(ctx, cw, artifact, tag, required)
+}
+
+func getRequiredArtifacts(artifact *latest.Artifact, builtArtifacts *sync.Map) ([]Artifact, error) {
+	var required []Artifact
+	for _, d := range artifact.Dependencies {
+		a, ok := builtArtifacts.Load(d.ImageName)
+		if !ok {
+			return nil, fmt.Errorf("failed to build %q: required image %q not found", artifact.ImageName, d.ImageName)
+		}
+		required = append(required, a.(Artifact))
+	}
+	return required, nil
 }
 
 func collectResults(out io.Writer, artifacts []*latest.Artifact, results *sync.Map, outputs []chan string) ([]Artifact, error) {
