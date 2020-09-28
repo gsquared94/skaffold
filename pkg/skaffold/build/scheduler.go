@@ -43,7 +43,7 @@ var (
 // Each artifact build runs in its own goroutine. It limits the max concurrency using a buffered channel like a semaphore.
 // At the same time, it uses the `artifactChanModel` to model the artifacts dependency graph and to make each artifact build wait for its required artifacts' builds.
 func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, buildArtifact ArtifactBuilder, concurrency int) ([]Artifact, error) {
-	acmSlice := makeArtifactChanModel(artifacts)
+	acmSlice := makeArtifactChanModel(artifacts, concurrency)
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -53,11 +53,6 @@ func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts [
 	results := new(sync.Map)
 	outputs := make([]chan string, len(acmSlice))
 
-	if concurrency == 0 {
-		concurrency = len(acmSlice)
-	}
-	sem := make(chan bool, concurrency)
-
 	wg.Add(len(artifacts))
 	for i := range acmSlice {
 		outputs[i] = make(chan string, buffSize)
@@ -66,13 +61,8 @@ func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts [
 		// Create a goroutine for each element in acmSlice. Each goroutine waits on its dependencies to finish building.
 		// Because our artifacts form a DAG, at least one of the goroutines should be able to start building.
 		go func(a *artifactChanModel) {
-			a.waitForDependencies(ctx)
-			sem <- true
 			// Run build and write output/logs to piped writer and store build result in sync.Map
-			runBuild(ctx, w, tags, a.artifact, results, buildArtifact)
-			a.markComplete()
-			<-sem
-
+			runBuild(ctx, w, tags, a, results, buildArtifact)
 			wg.Done()
 		}(acmSlice[i])
 
@@ -84,61 +74,29 @@ func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts [
 	return collectResults(out, artifacts, results, outputs)
 }
 
-// artifactChanModel models the artifact dependency graph using a set of channels.
-// Each artifact has a channel that it closes once it completes building (either success or failure) by calling `markComplete`. This notifies *all* listeners waiting for this artifact.
-// Additionally it has a list of channels for each of its dependencies.
-// Calling `waitForDependencies` ensures that all required artifacts' channels have already been closed and as such have finished building.
-// This model allows for composing any arbitrary function with dependency ordering.
-type artifactChanModel struct {
-	artifact              *latest.Artifact
-	artifactChan          chan interface{}
-	requiredArtifactChans []chan interface{}
-}
-
-func (a *artifactChanModel) markComplete() {
-	// closing channel notifies all listeners waiting for this build to complete
-	close(a.artifactChan)
-}
-func (a *artifactChanModel) waitForDependencies(ctx context.Context) {
-	for _, dep := range a.requiredArtifactChans {
-		// wait for dependency to complete build
-		select {
-		case <-ctx.Done():
-		case <-dep:
-		}
-	}
-}
-
-func makeArtifactChanModel(artifacts []*latest.Artifact) []*artifactChanModel {
-	chanMap := make(map[string]chan interface{})
-	for _, a := range artifacts {
-		chanMap[a.ImageName] = make(chan interface{})
-	}
-
-	var acmSlice []*artifactChanModel
-	for _, a := range artifacts {
-		acm := &artifactChanModel{artifact: a, artifactChan: chanMap[a.ImageName]}
-		for _, d := range a.Dependencies {
-			acm.requiredArtifactChans = append(acm.requiredArtifactChans, chanMap[d.ImageName])
-		}
-		acmSlice = append(acmSlice, acm)
-	}
-	return acmSlice
-}
-
-func runBuild(ctx context.Context, cw io.WriteCloser, tags tag.ImageTags, artifact *latest.Artifact, results *sync.Map, build ArtifactBuilder) {
-	event.BuildInProgress(artifact.ImageName)
-
-	finalTag, err := getBuildResult(ctx, cw, tags, artifact, build)
+func runBuild(ctx context.Context, cw io.WriteCloser, tags tag.ImageTags, a *artifactChanModel, results *sync.Map, build ArtifactBuilder) {
+	defer cw.Close()
+	err := a.waitForDependencies(ctx)
+	event.BuildInProgress(a.artifact.ImageName)
 	if err != nil {
-		event.BuildFailed(artifact.ImageName, err)
-		results.Store(artifact.ImageName, err)
-	} else {
-		event.BuildComplete(artifact.ImageName)
-		artifact := Artifact{ImageName: artifact.ImageName, Tag: finalTag}
-		results.Store(artifact.ImageName, artifact)
+		event.BuildFailed(a.artifact.ImageName, err)
+		results.Store(a.artifact.ImageName, err)
+		a.markFailure()
+		return
 	}
-	cw.Close()
+
+	finalTag, err := getBuildResult(ctx, cw, tags, a.artifact, build)
+	if err != nil {
+		event.BuildFailed(a.artifact.ImageName, err)
+		results.Store(a.artifact.ImageName, err)
+		a.markFailure()
+		return
+	}
+
+	event.BuildComplete(a.artifact.ImageName)
+	ar := Artifact{ImageName: a.artifact.ImageName, Tag: finalTag}
+	results.Store(ar.ImageName, ar)
+	a.markSuccess()
 }
 
 func readOutputAndWriteToChannel(r io.Reader, lines chan string) {

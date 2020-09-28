@@ -385,7 +385,7 @@ func TestInOrderForArgs(t *testing.T) {
 			},
 			artifactLen: 5,
 			expected:    nil,
-			err:         fmt.Errorf("couldn't build %q: %w", "artifact2", fmt.Errorf("some error occurred while building %q", "artifact2")),
+			err:         fmt.Errorf("couldn't build %q: %w", "artifact1", fmt.Errorf("failed to build required artifact: %q", "artifact2")),
 		},
 	}
 	for _, test := range tests {

@@ -753,7 +753,7 @@ func TestValidateLogsConfig(t *testing.T) {
 	}
 }
 
-func TestValidateArtifactCircularDependencies(t *testing.T) {
+func TestValidateAcyclicDependencies(t *testing.T) {
 	tests := []struct {
 		description string
 		artifactLen int
@@ -848,7 +848,7 @@ func setDependencies(a []*latest.Artifact, d map[int][]int) {
 	}
 }
 
-func TestValidateArtifactDependencyUniqueness(t *testing.T) {
+func TestValidateUniqueDependencyAliases(t *testing.T) {
 	artifacts := []*latest.Artifact{
 		{
 			ImageName: "artifact1",
@@ -868,6 +868,61 @@ func TestValidateArtifactDependencyUniqueness(t *testing.T) {
 	expected := []error{
 		fmt.Errorf(`invalid build dependency for artifact "artifact1": alias "alias2" repeated`),
 		fmt.Errorf(`unknown build dependency "artifact2a" for artifact "artifact1"`),
+	}
+	errs := validateArtifactDependencies(artifacts)
+	testutil.CheckDeepEqual(t, expected, errs, cmp.Comparer(errorsComparer))
+}
+
+func TestValidateValidDependencyAliases(t *testing.T) {
+	artifacts := []*latest.Artifact{
+		{
+			ImageName: "artifact1",
+		},
+		{
+			ImageName: "artifact2",
+			ArtifactType: latest.ArtifactType{
+				DockerArtifact: &latest.DockerArtifact{},
+			},
+			Dependencies: []*latest.ArtifactDependency{
+				{Alias: "ARTIFACT_1", ImageName: "artifact1"},
+				{Alias: "1_ARTIFACT", ImageName: "artifact1"},
+			},
+		},
+		{
+			ImageName: "artifact3",
+			ArtifactType: latest.ArtifactType{
+				DockerArtifact: &latest.DockerArtifact{},
+			},
+			Dependencies: []*latest.ArtifactDependency{
+				{Alias: "artifact!", ImageName: "artifact1"},
+				{Alias: "artifact#1", ImageName: "artifact1"},
+			},
+		},
+		{
+			ImageName: "artifact4",
+			ArtifactType: latest.ArtifactType{
+				CustomArtifact: &latest.CustomArtifact{},
+			},
+			Dependencies: []*latest.ArtifactDependency{
+				{Alias: "alias1", ImageName: "artifact1"},
+				{Alias: "alias2", ImageName: "artifact2"},
+			},
+		},
+		{
+			ImageName: "artifact5",
+			ArtifactType: latest.ArtifactType{
+				BuildpackArtifact: &latest.BuildpackArtifact{},
+			},
+			Dependencies: []*latest.ArtifactDependency{
+				{Alias: "artifact!", ImageName: "artifact1"},
+				{Alias: "artifact#1", ImageName: "artifact1"},
+			},
+		},
+	}
+	expected := []error{
+		fmt.Errorf(`invalid build dependency for artifact "artifact2": alias "1_ARTIFACT" doesn't match required pattern %q`, dependencyAliasPattern),
+		fmt.Errorf(`invalid build dependency for artifact "artifact3": alias "artifact!" doesn't match required pattern %q`, dependencyAliasPattern),
+		fmt.Errorf(`invalid build dependency for artifact "artifact3": alias "artifact#1" doesn't match required pattern %q`, dependencyAliasPattern),
 	}
 	errs := validateArtifactDependencies(artifacts)
 	testutil.CheckDeepEqual(t, expected, errs, cmp.Comparer(errorsComparer))

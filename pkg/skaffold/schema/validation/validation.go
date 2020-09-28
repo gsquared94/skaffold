@@ -19,6 +19,7 @@ package validation
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/misc"
@@ -30,7 +31,8 @@ import (
 
 var (
 	// for testing
-	validateYamltags = yamltags.ValidateStruct
+	validateYamltags       = yamltags.ValidateStruct
+	dependencyAliasPattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 )
 
 // Process checks if the Skaffold pipeline is valid and returns all encountered errors as a concatenated string
@@ -81,6 +83,7 @@ func validateImageNames(artifacts []*latest.Artifact) (errs []error) {
 func validateArtifactDependencies(artifacts []*latest.Artifact) (errs []error) {
 	errs = append(errs, validateUniqueDependencyAliases(artifacts)...)
 	errs = append(errs, validateAcyclicDependencies(artifacts)...)
+	errs = append(errs, validateValidDependencyAliases(artifacts)...)
 	return
 }
 
@@ -124,6 +127,22 @@ func dfs(artifact *latest.Artifact, visited, marked map[string]bool, artifacts m
 		}
 	}
 	return nil
+}
+
+// validateValidDependencyAliases makes sure that artifact dependency aliases are valid.
+// docker and custom builders require aliases match [a-zA-Z_][a-zA-Z0-9_]* pattern
+func validateValidDependencyAliases(artifacts []*latest.Artifact) (errs []error) {
+	for _, a := range artifacts {
+		if a.DockerArtifact == nil && a.CustomArtifact == nil {
+			continue
+		}
+		for _, d := range a.Dependencies {
+			if !dependencyAliasPattern.MatchString(d.Alias) {
+				errs = append(errs, fmt.Errorf("invalid build dependency for artifact %q: alias %q doesn't match required pattern %q", a.ImageName, d.Alias, dependencyAliasPattern.String()))
+			}
+		}
+	}
+	return
 }
 
 // validateUniqueDependencyAliases makes sure that artifact dependency aliases are unique for each artifact
