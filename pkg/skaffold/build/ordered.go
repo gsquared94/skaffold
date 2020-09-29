@@ -64,6 +64,7 @@ func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts [
 			// Run build and write output/logs to piped writer and store build result in sync.Map
 			scheduler.run(ctx, a,
 				func() (string, error) {
+					event.BuildInProgress(a.ImageName)
 					return getBuildResult(ctx, w, tags, a, buildArtifact)
 				},
 				func(tag string) {
