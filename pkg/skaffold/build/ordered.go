@@ -31,7 +31,7 @@ import (
 
 const bufferedLinesPerArtifact = 10000
 
-type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error)
+type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, artifactResolver ArtifactResolver) (string, error)
 
 // For testing
 var (

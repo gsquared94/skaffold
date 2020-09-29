@@ -36,18 +36,18 @@ import (
 
 // Build runs a docker build on the host and tags the resulting image with
 // its checksum. It streams build progress to the writer argument.
-func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact) ([]build.Artifact, error) {
+func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []build.Artifact) ([]build.Artifact, error) {
 	if b.localCluster {
 		color.Default.Fprintf(out, "Found [%s] context, using local docker daemon.\n", b.kubeContext)
 	}
 	defer b.localDocker.Close()
 
 	builder := build.WithLogFile(b.buildArtifact, b.muted)
-	return build.InOrder(ctx, out, tags, artifacts, builder, *b.local.Concurrency)
+	return build.InOrder(ctx, out, tags, artifacts, existing, builder, *b.local.Concurrency)
 }
 
-func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string) (string, error) {
-	digestOrImageID, err := b.runBuildForArtifact(ctx, out, a, tag)
+func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, requiredArtifacts []build.Artifact) (string, error) {
+	digestOrImageID, err := b.runBuildForArtifact(ctx, out, a, tag, requiredArtifacts)
 	if err != nil {
 		return "", err
 	}
@@ -74,7 +74,7 @@ func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Ar
 	return build.TagWithImageID(ctx, tag, imageID, b.localDocker)
 }
 
-func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string) (string, error) {
+func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, prereqs []build.Artifact) (string, error) {
 	if !b.pushImages {
 		// All of the builders will rely on a local Docker:
 		// + Either to build the image,
@@ -87,7 +87,7 @@ func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *lat
 
 	switch {
 	case a.DockerArtifact != nil:
-		return b.buildDocker(ctx, out, a, tag, b.mode)
+		return b.buildDocker(ctx, out, a, tag, b.mode, prereqs)
 
 	case a.BazelArtifact != nil:
 		return bazel.NewArtifactBuilder(b.localDocker, b.cfg, b.pushImages).Build(ctx, out, a, tag)

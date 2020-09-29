@@ -191,7 +191,7 @@ func TestBuild(t *testing.T) {
 	for _, test := range tests {
 		testutil.Run(t, test.description, func(t *testutil.T) {
 			t.Override(&DefaultAuthHelper, testAuthHelper{})
-			t.Override(&EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact) (map[string]*string, error) {
+			t.Override(&EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, additionalArgs map[string]string) (map[string]*string, error) {
 				return util.EvaluateEnvTemplateMap(a.BuildArgs)
 			})
 			t.SetEnvs(test.env)

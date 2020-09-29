@@ -63,7 +63,7 @@ type LocalDaemon interface {
 	ExtraEnv() []string
 	ServerVersion(ctx context.Context) (types.Version, error)
 	ConfigFile(ctx context.Context, image string) (*v1.ConfigFile, error)
-	Build(ctx context.Context, out io.Writer, workspace string, a *latest.DockerArtifact, ref string, mode config.RunMode) (string, error)
+	Build(ctx context.Context, out io.Writer, workspace string, a *latest.DockerArtifact, ref string, mode config.RunMode, dep DependencyProvider) (string, error)
 	Push(ctx context.Context, out io.Writer, ref string) (string, error)
 	Pull(ctx context.Context, out io.Writer, ref string) error
 	Load(ctx context.Context, out io.Writer, input io.Reader, ref string) (string, error)
@@ -75,6 +75,11 @@ type LocalDaemon interface {
 	ImageExists(ctx context.Context, ref string) bool
 	Prune(ctx context.Context, out io.Writer, images []string, pruneChildren bool) error
 	RawClient() client.CommonAPIClient
+}
+
+// DependencyProvider provides an interface to resolve built artifacts by image name.
+type DependencyProvider interface {
+	GetImageRefFor(imageName string) string
 }
 
 type localDaemon struct {
@@ -164,14 +169,14 @@ func (l *localDaemon) CheckCompatible(a *latest.DockerArtifact) error {
 }
 
 // Build performs a docker build and returns the imageID.
-func (l *localDaemon) Build(ctx context.Context, out io.Writer, workspace string, a *latest.DockerArtifact, ref string, mode config.RunMode) (string, error) {
+func (l *localDaemon) Build(ctx context.Context, out io.Writer, workspace string, a *latest.DockerArtifact, ref string, mode config.RunMode, deps map[string]string) (string, error) {
 	logrus.Debugf("Running docker build: context: %s, dockerfile: %s", workspace, a.DockerfilePath)
 
 	if err := l.CheckCompatible(a); err != nil {
 		return "", err
 	}
 
-	buildArgs, err := EvalBuildArgs(mode, workspace, a)
+	buildArgs, err := EvalBuildArgs(mode, workspace, a, deps)
 	if err != nil {
 		return "", fmt.Errorf("unable to evaluate build args: %w", err)
 	}

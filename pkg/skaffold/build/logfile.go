@@ -36,7 +36,7 @@ func WithLogFile(builder ArtifactBuilder, muted Muted) ArtifactBuilder {
 		return builder
 	}
 
-	return func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error) {
+	return func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, requiredArtifacts []Artifact) (string, error) {
 		file, err := logfile.Create("build", artifact.ImageName+".log")
 		if err != nil {
 			return "", fmt.Errorf("unable to create log file for %s: %w", artifact.ImageName, err)
@@ -48,7 +48,7 @@ func WithLogFile(builder ArtifactBuilder, muted Muted) ArtifactBuilder {
 		w := io.MultiWriter(file, &buf)
 
 		// Run the build.
-		digest, err := builder(ctx, w, artifact, tag)
+		digest, err := builder(ctx, w, artifact, tag, requiredArtifacts)
 
 		// After the build finishes, close the log file. If the build failed, print the full log to the console.
 		file.Close()
