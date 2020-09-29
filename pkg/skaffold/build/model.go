@@ -23,16 +23,14 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 )
 
-// artifactChanModel models the artifact dependency graph using a set of channels.
+// artifactDAG models the artifact dependency graph using a set of channels.
 // Each artifact has a status struct that has success and a failure channel which it closes once it completes building by calling either markSuccess or markFailure respectively.
 // This notifies all listeners waiting for this artifact of a successful or failed build.
 // Additionally it has a reference to the channels for each of its dependencies.
 // Calling `waitForDependencies` ensures that all required artifacts' channels have already been closed and as such have finished building before the current artifact build starts.
-type artifactChanModel struct {
-	artifact                 *latest.Artifact
+type artifactDAG struct {
 	artifactStatus           status
 	requiredArtifactStatuses []status
-	concurrencySem           chan bool
 }
 
 type status struct {
@@ -41,21 +39,16 @@ type status struct {
 	failure   chan interface{}
 }
 
-func (a *artifactChanModel) markSuccess() {
+func (a *artifactDAG) markSuccess() {
 	// closing channel notifies all listeners waiting for this build that it succeeded
 	close(a.artifactStatus.success)
-	<-a.concurrencySem
 }
 
-func (a *artifactChanModel) markFailure() {
+func (a *artifactDAG) markFailure() {
 	// closing channel notifies all listeners waiting for this build that it failed
 	close(a.artifactStatus.failure)
-	<-a.concurrencySem
 }
-func (a *artifactChanModel) waitForDependencies(ctx context.Context) error {
-	defer func() {
-		a.concurrencySem <- true
-	}()
+func (a *artifactDAG) waitForDependencies(ctx context.Context) error {
 	for _, depStatus := range a.requiredArtifactStatuses {
 		// wait for required builds to complete
 		select {
@@ -69,7 +62,7 @@ func (a *artifactChanModel) waitForDependencies(ctx context.Context) error {
 	return nil
 }
 
-func makeArtifactChanModel(artifacts []*latest.Artifact, c int) []*artifactChanModel {
+func makeArtifactDAG(artifacts []*latest.Artifact) map[string]artifactDAG {
 	statusMap := make(map[string]status)
 	for _, a := range artifacts {
 		statusMap[a.ImageName] = status{
@@ -79,19 +72,13 @@ func makeArtifactChanModel(artifacts []*latest.Artifact, c int) []*artifactChanM
 		}
 	}
 
-	if c == 0 {
-		c = len(artifacts)
-	}
-	// sem is a channel that will allow up to `c` concurrent operations.
-	sem := make(chan bool, c)
-
-	var acmSlice []*artifactChanModel
+	m := make(map[string]artifactDAG)
 	for _, a := range artifacts {
-		acm := &artifactChanModel{artifact: a, artifactStatus: statusMap[a.ImageName], concurrencySem: sem}
+		dag := artifactDAG{artifactStatus: statusMap[a.ImageName]}
 		for _, d := range a.Dependencies {
-			acm.requiredArtifactStatuses = append(acm.requiredArtifactStatuses, statusMap[d.ImageName])
+			dag.requiredArtifactStatuses = append(dag.requiredArtifactStatuses, statusMap[d.ImageName])
 		}
-		acmSlice = append(acmSlice, acm)
+		m[a.ImageName] = dag
 	}
-	return acmSlice
+	return m
 }
