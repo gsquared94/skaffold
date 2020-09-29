@@ -29,8 +29,8 @@ import (
 // Additionally it has a reference to the channels for each of its dependencies.
 // Calling `waitForDependencies` ensures that all required artifacts' channels have already been closed and as such have finished building before the current artifact build starts.
 type artifactDAG struct {
-	artifactStatus           status
-	requiredArtifactStatuses []status
+	status             status
+	dependencyStatuses []status
 }
 
 type status struct {
@@ -41,15 +41,15 @@ type status struct {
 
 func (a *artifactDAG) markSuccess() {
 	// closing channel notifies all listeners waiting for this build that it succeeded
-	close(a.artifactStatus.success)
+	close(a.status.success)
 }
 
 func (a *artifactDAG) markFailure() {
 	// closing channel notifies all listeners waiting for this build that it failed
-	close(a.artifactStatus.failure)
+	close(a.status.failure)
 }
 func (a *artifactDAG) waitForDependencies(ctx context.Context) error {
-	for _, depStatus := range a.requiredArtifactStatuses {
+	for _, depStatus := range a.dependencyStatuses {
 		// wait for required builds to complete
 		select {
 		case <-ctx.Done():
@@ -74,9 +74,9 @@ func makeArtifactDAG(artifacts []*latest.Artifact) map[string]artifactDAG {
 
 	m := make(map[string]artifactDAG)
 	for _, a := range artifacts {
-		dag := artifactDAG{artifactStatus: statusMap[a.ImageName]}
+		dag := artifactDAG{status: statusMap[a.ImageName]}
 		for _, d := range a.Dependencies {
-			dag.requiredArtifactStatuses = append(dag.requiredArtifactStatuses, statusMap[d.ImageName])
+			dag.dependencyStatuses = append(dag.dependencyStatuses, statusMap[d.ImageName])
 		}
 		m[a.ImageName] = dag
 	}
