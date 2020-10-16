@@ -29,7 +29,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 )
 
-type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error)
+type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, artifactResolver ArtifactResolver) (string, error)
 
 type scheduler struct {
 	artifacts       []*latest.Artifact
@@ -40,13 +40,13 @@ type scheduler struct {
 	concurrencySem  countingSemaphore
 }
 
-func newScheduler(artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int) *scheduler {
+func newScheduler(artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int, existing []Artifact) *scheduler {
 	s := scheduler{
 		artifacts:       artifacts,
 		nodes:           createNodes(artifacts),
 		artifactBuilder: artifactBuilder,
 		logger:          newLogAggregator(len(artifacts)),
-		results:         newArtifactsStore(),
+		results:         newArtifactsStore(existing),
 		concurrencySem:  newCountingSemaphore(concurrency),
 	}
 	return &s
@@ -94,7 +94,7 @@ func (s *scheduler) build(ctx context.Context, tags tag.ImageTags, i int) error 
 	}
 	defer w.Close()
 
-	finalTag, err := performBuild(ctx, w, tags, a, s.artifactBuilder)
+	finalTag, err := performBuild(ctx, w, tags, a, s.artifactBuilder, s.results)
 	if err != nil {
 		event.BuildFailed(a.ImageName, err)
 		return err
@@ -107,7 +107,7 @@ func (s *scheduler) build(ctx context.Context, tags tag.ImageTags, i int) error 
 }
 
 // InOrder builds a list of artifacts in dependency order.
-func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int) ([]Artifact, error) {
+func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int, existing []Artifact) ([]Artifact, error) {
 	// `concurrency` specifies the max number of builds that can run at any one time. If concurrency is 0, then all builds can run in parallel.
 	if concurrency == 0 {
 		concurrency = len(artifacts)
@@ -115,17 +115,17 @@ func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts [
 	if concurrency > 1 {
 		color.Default.Fprintf(out, "Building %d artifacts in parallel\n", concurrency)
 	}
-	s := newScheduler(artifacts, artifactBuilder, concurrency)
+	s := newScheduler(artifacts, artifactBuilder, concurrency, existing)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	return s.run(ctx, out, tags)
 }
 
-func performBuild(ctx context.Context, cw io.Writer, tags tag.ImageTags, artifact *latest.Artifact, build ArtifactBuilder) (string, error) {
+func performBuild(ctx context.Context, cw io.Writer, tags tag.ImageTags, artifact *latest.Artifact, build ArtifactBuilder, r ArtifactResolver) (string, error) {
 	color.Default.Fprintf(cw, "Building [%s]...\n", artifact.ImageName)
 	tag, present := tags[artifact.ImageName]
 	if !present {
 		return "", fmt.Errorf("unable to find tag for image %s", artifact.ImageName)
 	}
-	return build(ctx, cw, artifact, tag)
+	return build(ctx, cw, artifact, tag, r)
 }

@@ -50,13 +50,13 @@ type withTimings struct {
 	cacheArtifacts bool
 }
 
-func (w withTimings) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact) ([]build.Artifact, error) {
+func (w withTimings) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []build.Artifact) ([]build.Artifact, error) {
 	if len(artifacts) == 0 && w.cacheArtifacts {
 		return nil, nil
 	}
 	start := time.Now()
 
-	bRes, err := w.Builder.Build(ctx, out, tags, artifacts)
+	bRes, err := w.Builder.Build(ctx, out, tags, artifacts, existing)
 	if err != nil {
 		return nil, err
 	}

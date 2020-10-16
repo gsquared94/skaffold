@@ -112,12 +112,16 @@ func newLogAggregator(capacity int) logAggregator {
 // builtArtifacts stores the results of each artifact build.
 type builtArtifacts interface {
 	Record(a *latest.Artifact, tag string)
-	GetTag(a *latest.Artifact) (string, error)
+	GetImageTag(imageName string) (string, error)
 	GetArtifacts(s []*latest.Artifact) ([]Artifact, error)
 }
 
-func newArtifactsStore() builtArtifacts {
-	return &builtArtifactsImpl{m: new(sync.Map)}
+func newArtifactsStore(prebuilt []Artifact) builtArtifacts {
+	ba := &builtArtifactsImpl{m: new(sync.Map)}
+	for _, a := range prebuilt {
+		ba.m.Store(a.ImageName, a.Tag)
+	}
+	return ba
 }
 
 type builtArtifactsImpl struct {
@@ -128,14 +132,14 @@ func (ba *builtArtifactsImpl) Record(a *latest.Artifact, tag string) {
 	ba.m.Store(a.ImageName, tag)
 }
 
-func (ba *builtArtifactsImpl) GetTag(a *latest.Artifact) (string, error) {
-	v, ok := ba.m.Load(a.ImageName)
+func (ba *builtArtifactsImpl) GetImageTag(imageName string) (string, error) {
+	v, ok := ba.m.Load(imageName)
 	if !ok {
-		return "", fmt.Errorf("could not find build result for image %s", a.ImageName)
+		return "", fmt.Errorf("could not find build result for image %s", imageName)
 	}
 	t, ok := v.(string)
 	if !ok {
-		logrus.Fatalf("invalid build output recorded for image %s", a.ImageName)
+		logrus.Fatalf("invalid build output recorded for image %s", imageName)
 	}
 	return t, nil
 }
@@ -143,7 +147,7 @@ func (ba *builtArtifactsImpl) GetTag(a *latest.Artifact) (string, error) {
 func (ba *builtArtifactsImpl) GetArtifacts(s []*latest.Artifact) ([]Artifact, error) {
 	var builds []Artifact
 	for _, a := range s {
-		t, err := ba.GetTag(a)
+		t, err := ba.GetImageTag(a.ImageName)
 		if err != nil {
 			return nil, err
 		}

@@ -95,7 +95,7 @@ func (r *SkaffoldRunner) doDev(ctx context.Context, out io.Writer, logger *kuber
 			r.intents.resetBuild()
 		}()
 
-		if _, err := r.BuildAndTest(ctx, out, r.changeSet.needsRebuild); err != nil {
+		if _, err := r.BuildAndTest(ctx, out, r.changeSet.needsRebuild, r.builds); err != nil {
 			logrus.Warnln("Skipping deploy due to error:", err)
 			event.DevLoopFailedInPhase(r.devIteration, sErrors.Build, err)
 			return nil
@@ -204,7 +204,7 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 	}
 
 	// First build
-	bRes, err := r.BuildAndTest(ctx, out, artifacts)
+	bRes, err := r.BuildAndTest(ctx, out, artifacts, r.builds)
 	if err != nil {
 		event.DevLoopFailedInPhase(r.devIteration, sErrors.Build, err)
 		return fmt.Errorf("exiting dev mode because first build failed: %w", err)

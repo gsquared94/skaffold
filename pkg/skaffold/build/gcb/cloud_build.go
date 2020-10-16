@@ -45,12 +45,13 @@ import (
 )
 
 // Build builds a list of artifacts with Google Cloud Build.
-func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact) ([]build.Artifact, error) {
+func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []build.Artifact) ([]build.Artifact, error) {
 	builder := build.WithLogFile(b.buildArtifactWithCloudBuild, b.muted)
-	return build.InOrder(ctx, out, tags, artifacts, builder, b.GoogleCloudBuild.Concurrency)
+	return build.InOrder(ctx, out, tags, artifacts, builder, b.GoogleCloudBuild.Concurrency, existing)
 }
 
-func (b *Builder) buildArtifactWithCloudBuild(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error) {
+func (b *Builder) buildArtifactWithCloudBuild(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, _ build.ArtifactResolver) (string, error) {
+	// TODO: [#4922] Implement required artifact resolution from the `ArtifactResolver`
 	cbclient, err := cloudbuild.NewService(ctx, gcp.ClientOptions()...)
 	if err != nil {
 		return "", fmt.Errorf("getting cloudbuild client: %w", err)

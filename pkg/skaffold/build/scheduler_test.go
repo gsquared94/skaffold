@@ -46,7 +46,7 @@ func TestGetBuild(t *testing.T) {
 	}{
 		{
 			description: "build succeeds",
-			buildArtifact: func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error) {
+			buildArtifact: func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, r ArtifactResolver) (string, error) {
 				out.Write([]byte("build succeeds"))
 				return fmt.Sprintf("%s@sha256:abac", tag), nil
 			},
@@ -59,7 +59,7 @@ func TestGetBuild(t *testing.T) {
 		},
 		{
 			description: "build fails",
-			buildArtifact: func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error) {
+			buildArtifact: func(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, r ArtifactResolver) (string, error) {
 				return "", fmt.Errorf("build fails")
 			},
 			tags: tag.ImageTags{
@@ -80,7 +80,7 @@ func TestGetBuild(t *testing.T) {
 			out := new(bytes.Buffer)
 
 			artifact := &latest.Artifact{ImageName: "skaffold/image1"}
-			got, err := performBuild(context.Background(), out, test.tags, artifact, test.buildArtifact)
+			got, err := performBuild(context.Background(), out, test.tags, artifact, test.buildArtifact, nil)
 
 			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expectedTag, got)
 			t.CheckDeepEqual(test.expectedOut, out.String())
