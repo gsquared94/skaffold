@@ -25,13 +25,14 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/custom"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/jib"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/misc"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 )
 
 // DependenciesForArtifact returns the dependencies for a given artifact.
-func DependenciesForArtifact(ctx context.Context, a *latest.Artifact, cfg docker.Config) ([]string, error) {
+func DependenciesForArtifact(ctx context.Context, a *latest.Artifact, cfg docker.Config, dependencies []*latest.ArtifactDependency, r ArtifactResolver) ([]string, error) {
 	var (
 		paths []string
 		err   error
@@ -39,7 +40,15 @@ func DependenciesForArtifact(ctx context.Context, a *latest.Artifact, cfg docker
 
 	switch {
 	case a.DockerArtifact != nil:
-		paths, err = docker.GetDependencies(ctx, a.Workspace, a.DockerArtifact.DockerfilePath, a.DockerArtifact.BuildArgs, cfg)
+		deps, err := docker.ResolveArtifactDependencies(dependencies, r)
+		if err != nil {
+			return nil, fmt.Errorf("unable to resolve required artifacts: %w", err)
+		}
+		buildArgs, err := docker.EvalBuildArgs(cfg.Mode(), a.Workspace, a.DockerArtifact, deps)
+		if err != nil {
+			return nil, fmt.Errorf("unable to evaluate build args: %w", err)
+		}
+		paths, err = docker.GetDependencies(ctx, a.Workspace, a.DockerArtifact.DockerfilePath, buildArgs, cfg)
 
 	case a.KanikoArtifact != nil:
 		paths, err = docker.GetDependencies(ctx, a.Workspace, a.KanikoArtifact.DockerfilePath, a.KanikoArtifact.BuildArgs, cfg)
@@ -65,4 +74,8 @@ func DependenciesForArtifact(ctx context.Context, a *latest.Artifact, cfg docker
 	}
 
 	return util.AbsolutePaths(a.Workspace, paths), nil
+}
+
+func getBuildArgs(a *latest.DockerArtifact, workspace string, mode config.RunMode, dependencies []*latest.ArtifactDependency, r ArtifactResolver) (map[string]*string, error) {
+
 }

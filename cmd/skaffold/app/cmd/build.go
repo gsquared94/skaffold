@@ -74,7 +74,7 @@ func doBuild(ctx context.Context, out io.Writer) error {
 		if err := failForArtifactDependenciesWithCacheEnabled(ar, opts.CacheArtifacts); err != nil {
 			return err
 		}
-		bRes, err := r.BuildAndTest(ctx, buildOut, ar)
+		bRes, err := r.BuildAndTest(ctx, buildOut, ar, nil)
 
 		if quietFlag || buildOutputFlag != "" {
 			cmdOut := flags.BuildOutput{Builds: bRes}

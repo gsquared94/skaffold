@@ -44,7 +44,7 @@ const (
 type Runner interface {
 	Dev(context.Context, io.Writer, []*latest.Artifact) error
 	ApplyDefaultRepo(tag string) (string, error)
-	BuildAndTest(context.Context, io.Writer, []*latest.Artifact) ([]build.Artifact, error)
+	BuildAndTest(context.Context, io.Writer, []*latest.Artifact, []build.Artifact) ([]build.Artifact, error)
 	DeployAndLog(context.Context, io.Writer, []build.Artifact) error
 	GeneratePipeline(context.Context, io.Writer, *latest.SkaffoldConfig, []string, string) error
 	Render(context.Context, io.Writer, []build.Artifact, bool, string) error
@@ -64,12 +64,13 @@ type SkaffoldRunner struct {
 	monitor  filemon.Monitor
 	listener Listener
 
-	kubectlCLI *kubectl.CLI
-	cache      cache.Cache
-	changeSet  changeSet
-	runCtx     *runcontext.RunContext
-	labeller   *label.DefaultLabeller
-	builds     []build.Artifact
+	kubectlCLI    *kubectl.CLI
+	cache         cache.Cache
+	changeSet     changeSet
+	runCtx        *runcontext.RunContext
+	labeller      *label.DefaultLabeller
+	builds        []build.Artifact
+	artifactStore build.BuiltArtifacts
 
 	// podSelector is used to determine relevant pods for logging and portForwarding
 	podSelector *kubernetes.ImageList

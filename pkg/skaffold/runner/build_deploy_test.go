@@ -81,7 +81,7 @@ func TestBuildTestDeploy(t *testing.T) {
 			}}
 
 			runner := createRunner(t, test.testBench, nil)
-			bRes, err := runner.BuildAndTest(ctx, ioutil.Discard, artifacts)
+			bRes, err := runner.BuildAndTest(ctx, ioutil.Discard, artifacts, nil)
 			if err == nil {
 				err = runner.DeployAndLog(ctx, ioutil.Discard, bRes)
 			}
@@ -100,7 +100,7 @@ func TestBuildAndTestDryRun(t *testing.T) {
 		bRes, err := runner.BuildAndTest(context.Background(), ioutil.Discard, []*latest.Artifact{
 			{ImageName: "img1"},
 			{ImageName: "img2"},
-		})
+		}, nil)
 
 		t.CheckNoError(err)
 		t.CheckDeepEqual([]build.Artifact{
@@ -120,7 +120,7 @@ func TestBuildAndTestSkipBuild(t *testing.T) {
 		bRes, err := runner.BuildAndTest(context.Background(), ioutil.Discard, []*latest.Artifact{
 			{ImageName: "img1"},
 			{ImageName: "img2"},
-		})
+		}, nil)
 
 		t.CheckNoError(err)
 		t.CheckDeepEqual([]build.Artifact{}, bRes)

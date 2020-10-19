@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/sirupsen/logrus"
@@ -56,6 +57,7 @@ type Config interface {
 	GetKubeContext() string
 	MinikubeProfile() string
 	GetInsecureRegistries() map[string]bool
+	Mode() config.RunMode
 }
 
 // NewAPIClientImpl guesses the docker client to use based on current Kubernetes context.

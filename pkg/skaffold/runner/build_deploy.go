@@ -33,7 +33,7 @@ import (
 )
 
 // BuildAndTest builds and tests a list of artifacts.
-func (r *SkaffoldRunner) BuildAndTest(ctx context.Context, out io.Writer, artifacts []*latest.Artifact) ([]build.Artifact, error) {
+func (r *SkaffoldRunner) BuildAndTest(ctx context.Context, out io.Writer, artifacts []*latest.Artifact, existing []build.Artifact) ([]build.Artifact, error) {
 	// Use tags directly from the Kubernetes manifests.
 	if r.runCtx.DigestSource() == noneDigestSource {
 		return []build.Artifact{}, nil
@@ -61,14 +61,14 @@ func (r *SkaffoldRunner) BuildAndTest(ctx context.Context, out io.Writer, artifa
 		return bRes, nil
 	}
 
-	bRes, err := r.cache.Build(ctx, out, tags, artifacts, func(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact) ([]build.Artifact, error) {
+	bRes, err := r.cache.Build(ctx, out, tags, artifacts, existing, func(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, existing []build.Artifact) ([]build.Artifact, error) {
 		if len(artifacts) == 0 {
 			return nil, nil
 		}
 
 		r.hasBuilt = true
 
-		bRes, err := r.builder.Build(ctx, out, tags, artifacts)
+		bRes, err := r.builder.Build(ctx, out, tags, artifacts, existing)
 		if err != nil {
 			return nil, err
 		}
