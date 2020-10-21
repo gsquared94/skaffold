@@ -86,6 +86,7 @@ func (b *Builder) build(ctx context.Context, out io.Writer, a *latest.Artifact, 
 		}
 	}
 
+	// Does the builder image need to be pulled?
 	alreadyPulled := images.AreAlreadyPulled(artifact.Builder, artifact.RunImage)
 
 	if err := runPackBuildFunc(ctx, out, b.localDocker, pack.BuildOptions{
