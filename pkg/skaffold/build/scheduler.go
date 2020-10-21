@@ -36,11 +36,11 @@ type scheduler struct {
 	nodes           []node // size len(artifacts)
 	artifactBuilder ArtifactBuilder
 	logger          logAggregator
-	results         BuiltArtifacts
+	results         ArtifactStore
 	concurrencySem  countingSemaphore
 }
 
-func newScheduler(artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int, out io.Writer, store BuiltArtifacts) *scheduler {
+func newScheduler(artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int, out io.Writer, store ArtifactStore) *scheduler {
 	s := scheduler{
 		artifacts:       artifacts,
 		nodes:           createNodes(artifacts),
@@ -108,7 +108,7 @@ func (s *scheduler) build(ctx context.Context, tags tag.ImageTags, i int) error 
 }
 
 // InOrder builds a list of artifacts in dependency order.
-func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int, store BuiltArtifacts) ([]Artifact, error) {
+func InOrder(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latest.Artifact, artifactBuilder ArtifactBuilder, concurrency int, store ArtifactStore) ([]Artifact, error) {
 	// `concurrency` specifies the max number of builds that can run at any one time. If concurrency is 0, then all builds can run in parallel.
 	if concurrency == 0 {
 		concurrency = len(artifacts)

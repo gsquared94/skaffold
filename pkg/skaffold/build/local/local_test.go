@@ -254,8 +254,8 @@ func TestLocalRun(t *testing.T) {
 				},
 			})
 			t.CheckNoError(err)
-
-			res, err := builder.Build(context.Background(), ioutil.Discard, test.tags, test.artifacts, build.NewBuiltArtifacts())
+			builder = builder.WithArtifactStore(build.NewArtifactStore())
+			res, err := builder.Build(context.Background(), ioutil.Discard, test.tags, test.artifacts)
 
 			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expected, res)
 			t.CheckDeepEqual(test.expectedWarnings, fakeWarner.Warnings)

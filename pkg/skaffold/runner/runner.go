@@ -70,8 +70,7 @@ type SkaffoldRunner struct {
 	runCtx        *runcontext.RunContext
 	labeller      *label.DefaultLabeller
 	builds        []build.Artifact
-	artifactStore build.BuiltArtifacts
-
+	artifactStore build.ArtifactStore
 	// podSelector is used to determine relevant pods for logging and portForwarding
 	podSelector *kubernetes.ImageList
 
