@@ -138,7 +138,7 @@ func TestCacheBuildLocal(t *testing.T) {
 		cfg := &mockConfig{
 			cacheFile: tmpDir.Path("cache"),
 		}
-		artifactCache, err := NewCache(cfg, true, false, deps)
+		artifactCache, err := NewCache(cfg, true, false, deps, build.ToArtifactGraph(artifacts))
 		t.CheckNoError(err)
 
 		// First build: Need to build both artifacts
@@ -233,7 +233,7 @@ func TestCacheBuildRemote(t *testing.T) {
 		cfg := &mockConfig{
 			cacheFile: tmpDir.Path("cache"),
 		}
-		artifactCache, err := NewCache(cfg, false, false, deps)
+		artifactCache, err := NewCache(cfg, false, false, deps, build.ToArtifactGraph(artifacts))
 		t.CheckNoError(err)
 
 		// First build: Need to build both artifacts
@@ -317,7 +317,7 @@ func TestCacheFindMissing(t *testing.T) {
 		cfg := &mockConfig{
 			cacheFile: tmpDir.Path("cache"),
 		}
-		artifactCache, err := NewCache(cfg, false, true, deps)
+		artifactCache, err := NewCache(cfg, false, true, deps, build.ToArtifactGraph(artifacts))
 		t.CheckNoError(err)
 
 		// Because the artifacts are in the docker registry, we expect them to be imported correctly.
@@ -336,7 +336,9 @@ func TestCacheFindMissing(t *testing.T) {
 type mockConfig struct {
 	runcontext.RunContext // Embedded to provide the default values.
 	cacheFile             string
+	mode                  config.RunMode
 }
 
 func (c *mockConfig) CacheArtifacts() bool { return true }
 func (c *mockConfig) CacheFile() string    { return c.cacheFile }
+func (c *mockConfig) Mode() config.RunMode { return c.mode }
