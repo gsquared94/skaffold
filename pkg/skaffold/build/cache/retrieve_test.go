@@ -65,8 +65,8 @@ func (b *mockBuilder) BuildAndTest(ctx context.Context, out io.Writer, tags tag.
 	for _, artifact := range artifacts {
 		b.built = append(b.built, artifact)
 		tag := tags[artifact.ImageName]
-
-		_, err := b.dockerDaemon.Build(ctx, out, artifact.Workspace, artifact.DockerArtifact, artifact.Dependencies, tag, config.RunModes.Dev, b.store)
+		opts := docker.BuildOptions{Tag: tag, Mode: config.RunModes.Dev}
+		_, err := b.dockerDaemon.Build(ctx, out, artifact.Workspace, artifact.DockerArtifact, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,7 @@ func TestCacheBuildLocal(t *testing.T) {
 		})
 
 		// Mock args builder
-		t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, additionalArgs map[string]string) (map[string]*string, error) {
+		t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, extra map[string]*string) (map[string]*string, error) {
 			return a.BuildArgs, nil
 		})
 
@@ -139,11 +139,12 @@ func TestCacheBuildLocal(t *testing.T) {
 		cfg := &mockConfig{
 			cacheFile: tmpDir.Path("cache"),
 		}
-		artifactCache, err := NewCache(cfg, true, false, deps, build.ToArtifactGraph(artifacts), build.NewArtifactStore())
+		store := make(mockArtifactStore)
+		artifactCache, err := NewCache(cfg, true, false, deps, build.ToArtifactGraph(artifacts), store)
 		t.CheckNoError(err)
 
 		// First build: Need to build both artifacts
-		builder := &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: make(mockArtifactStore)}
+		builder := &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: store}
 		bRes, err := artifactCache.Build(context.Background(), ioutil.Discard, tags, artifacts, builder.BuildAndTest)
 
 		t.CheckNoError(err)
@@ -152,7 +153,7 @@ func TestCacheBuildLocal(t *testing.T) {
 
 		// Second build: both artifacts are read from cache
 		// Artifacts should always be returned in their original order
-		builder = &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: make(mockArtifactStore)}
+		builder = &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: store}
 		bRes, err = artifactCache.Build(context.Background(), ioutil.Discard, tags, artifacts, builder.BuildAndTest)
 
 		t.CheckNoError(err)
@@ -164,7 +165,7 @@ func TestCacheBuildLocal(t *testing.T) {
 		// Third build: change first artifact's dependency
 		// Artifacts should always be returned in their original order
 		tmpDir.Write("dep1", "new content")
-		builder = &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: make(mockArtifactStore)}
+		builder = &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: store}
 		bRes, err = artifactCache.Build(context.Background(), ioutil.Discard, tags, artifacts, builder.BuildAndTest)
 
 		t.CheckNoError(err)
@@ -176,7 +177,7 @@ func TestCacheBuildLocal(t *testing.T) {
 		// Fourth build: change second artifact's dependency
 		// Artifacts should always be returned in their original order
 		tmpDir.Write("dep3", "new content")
-		builder = &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: make(mockArtifactStore)}
+		builder = &mockBuilder{dockerDaemon: dockerDaemon, push: false, store: store}
 		bRes, err = artifactCache.Build(context.Background(), ioutil.Discard, tags, artifacts, builder.BuildAndTest)
 
 		t.CheckNoError(err)
@@ -226,7 +227,7 @@ func TestCacheBuildRemote(t *testing.T) {
 		})
 
 		// Mock args builder
-		t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, additionalArgs map[string]string) (map[string]*string, error) {
+		t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, extra map[string]*string) (map[string]*string, error) {
 			return a.BuildArgs, nil
 		})
 
@@ -310,7 +311,7 @@ func TestCacheFindMissing(t *testing.T) {
 		})
 
 		// Mock args builder
-		t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, additionalArgs map[string]string) (map[string]*string, error) {
+		t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, extra map[string]*string) (map[string]*string, error) {
 			return a.BuildArgs, nil
 		})
 

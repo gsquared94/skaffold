@@ -31,7 +31,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/warnings"
 )
 
-func (b *Builder) buildDocker(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, mode config.RunMode, r build.ArtifactResolver) (string, error) {
+func (b *Builder) buildDocker(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, mode config.RunMode) (string, error) {
 	// Fail fast if the Dockerfile can't be found.
 	dockerfile, err := docker.NormalizeDockerfilePath(a.Workspace, a.DockerArtifact.DockerfilePath)
 	if err != nil {
@@ -48,9 +48,15 @@ func (b *Builder) buildDocker(ctx context.Context, out io.Writer, a *latest.Arti
 	var imageID string
 
 	if b.local.UseDockerCLI || b.local.UseBuildkit {
-		imageID, err = b.dockerCLIBuild(ctx, out, a.Workspace, a.ArtifactType.DockerArtifact, a.Dependencies, tag, r)
+		imageID, err = b.dockerCLIBuild(ctx, out, a.Workspace, a.ArtifactType.DockerArtifact, a.Dependencies, tag)
 	} else {
-		imageID, err = b.localDocker.Build(ctx, out, a.Workspace, a.ArtifactType.DockerArtifact, a.Dependencies, tag, mode, r)
+		var deps map[string]*string
+		deps, err = build.CreateBuildArgsFromArtifacts(a.Dependencies, b.artifactStore)
+		if err != nil {
+			return "", fmt.Errorf("unable to resolve required artifacts: %w", err)
+		}
+		opts := docker.BuildOptions{Tag: tag, Mode: mode, ExtraBuildArgs: deps}
+		imageID, err = b.localDocker.Build(ctx, out, a.Workspace, a.ArtifactType.DockerArtifact, opts)
 	}
 
 	if err != nil {
@@ -68,14 +74,14 @@ func (b *Builder) retrieveExtraEnv() []string {
 	return b.localDocker.ExtraEnv()
 }
 
-func (b *Builder) dockerCLIBuild(ctx context.Context, out io.Writer, workspace string, a *latest.DockerArtifact, dependencies []*latest.ArtifactDependency, tag string, r build.ArtifactResolver) (string, error) {
+func (b *Builder) dockerCLIBuild(ctx context.Context, out io.Writer, workspace string, a *latest.DockerArtifact, dependencies []*latest.ArtifactDependency, tag string) (string, error) {
 	dockerfilePath, err := docker.NormalizeDockerfilePath(workspace, a.DockerfilePath)
 	if err != nil {
 		return "", fmt.Errorf("normalizing dockerfile path: %w", err)
 	}
 
 	args := []string{"build", workspace, "--file", dockerfilePath, "-t", tag}
-	deps, err := docker.ResolveArtifactDependencies(dependencies, r)
+	deps, err := build.CreateBuildArgsFromArtifacts(dependencies, b.artifactStore)
 	if err != nil {
 		return "", fmt.Errorf("unable to resolve required artifacts: %w", err)
 	}

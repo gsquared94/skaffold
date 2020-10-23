@@ -49,8 +49,8 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, 
 	return build.InOrder(ctx, out, tags, artifacts, builder, b.ClusterDetails.Concurrency, b.artifactStore)
 }
 
-func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, _ build.ArtifactResolver) (string, error) {
-	// TODO: [#4922] Implement required artifact resolution from the `ArtifactResolver`
+func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error) {
+	// TODO: [#4922] Implement required artifact resolution from the `artifactStore`
 	digest, err := b.runBuildForArtifact(ctx, out, artifact, tag)
 	if err != nil {
 		return "", err

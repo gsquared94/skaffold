@@ -61,8 +61,8 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, 
 	return rt, err
 }
 
-func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, r build.ArtifactResolver) (string, error) {
-	digestOrImageID, err := b.runBuildForArtifact(ctx, out, a, tag, r)
+func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string) (string, error) {
+	digestOrImageID, err := b.runBuildForArtifact(ctx, out, a, tag)
 	if err != nil {
 		return "", err
 	}
@@ -89,7 +89,7 @@ func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latest.Ar
 	return build.TagWithImageID(ctx, tag, imageID, b.localDocker)
 }
 
-func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string, r build.ArtifactResolver) (string, error) {
+func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latest.Artifact, tag string) (string, error) {
 	if !b.pushImages {
 		// All of the builders will rely on a local Docker:
 		// + Either to build the image,
@@ -102,7 +102,7 @@ func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *lat
 
 	switch {
 	case a.DockerArtifact != nil:
-		return b.buildDocker(ctx, out, a, tag, b.mode, r)
+		return b.buildDocker(ctx, out, a, tag, b.mode)
 
 	case a.BazelArtifact != nil:
 		return bazel.NewArtifactBuilder(b.localDocker, b.cfg, b.pushImages).Build(ctx, out, a, tag)

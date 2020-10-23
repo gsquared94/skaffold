@@ -51,11 +51,6 @@ func (g ArtifactGraph) Dependencies(a *latest.Artifact) []*latest.Artifact {
 	return sl
 }
 
-// ArtifactResolver provides an interface to resolve built artifacts by image name.
-type ArtifactResolver interface {
-	GetImageTag(imageName string) (string, error)
-}
-
 // Builder is an interface to the Build API of Skaffold.
 // It must build and make the resulting image accessible to the cluster.
 // This could include pushing to a authorized repository or loading the nodes with the image.

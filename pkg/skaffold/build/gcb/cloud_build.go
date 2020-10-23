@@ -50,8 +50,8 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, 
 	return build.InOrder(ctx, out, tags, artifacts, builder, b.GoogleCloudBuild.Concurrency, b.artifactStore)
 }
 
-func (b *Builder) buildArtifactWithCloudBuild(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string, r build.ArtifactResolver) (string, error) {
-	// TODO: [#4922] Implement required artifact resolution from the `ArtifactResolver`
+func (b *Builder) buildArtifactWithCloudBuild(ctx context.Context, out io.Writer, artifact *latest.Artifact, tag string) (string, error) {
+	// TODO: [#4922] Implement required artifact resolution from the `artifactStore`
 	cbclient, err := cloudbuild.NewService(ctx, gcp.ClientOptions()...)
 	if err != nil {
 		return "", fmt.Errorf("getting cloudbuild client: %w", err)
@@ -83,7 +83,7 @@ func (b *Builder) buildArtifactWithCloudBuild(ctx context.Context, out io.Writer
 		return "", fmt.Errorf("checking bucket is in correct project: %w", err)
 	}
 
-	dependencies, err := build.DependenciesForArtifact(ctx, artifact, b.cfg, r)
+	dependencies, err := build.DependenciesForArtifact(ctx, artifact, b.cfg, b.artifactStore)
 	if err != nil {
 		return "", fmt.Errorf("getting dependencies for %q: %w", artifact.ImageName, err)
 	}

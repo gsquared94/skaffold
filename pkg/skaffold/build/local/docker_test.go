@@ -33,13 +33,6 @@ import (
 	"github.com/GoogleContainerTools/skaffold/testutil"
 )
 
-type fakeArtifactResolver struct {
-}
-
-func (fakeArtifactResolver) GetImageTag(string) (string, error) {
-	return "", nil
-}
-
 func TestDockerCLIBuild(t *testing.T) {
 	tests := []struct {
 		description string
@@ -85,7 +78,7 @@ func TestDockerCLIBuild(t *testing.T) {
 			t.NewTempDir().Touch("Dockerfile").Chdir()
 			dockerfilePath, _ := filepath.Abs("Dockerfile")
 			t.Override(&docker.DefaultAuthHelper, testAuthHelper{})
-			t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, additionalArgs map[string]string) (map[string]*string, error) {
+			t.Override(&docker.EvalBuildArgs, func(mode config.RunMode, workspace string, a *latest.DockerArtifact, extra map[string]*string) (map[string]*string, error) {
 				return a.BuildArgs, nil
 			})
 			t.Override(&util.DefaultExecCommand, testutil.CmdRunEnv(
@@ -112,7 +105,7 @@ func TestDockerCLIBuild(t *testing.T) {
 				},
 			}
 
-			_, err = builder.buildDocker(context.Background(), ioutil.Discard, artifact, "tag", test.mode, fakeArtifactResolver{})
+			_, err = builder.buildDocker(context.Background(), ioutil.Discard, artifact, "tag", test.mode)
 			t.CheckNoError(err)
 		})
 	}
