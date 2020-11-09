@@ -101,7 +101,7 @@ skaffold dev --port-forward
 Once the image has been built and deployed click on the <walkthrough-web-preview-icon></walkthrough-web-preview-icon> icon and select `Preview on port 8080`. This should redirect to the running service and show the output:
 
 ```
-Hello World!
+Hello, World!
 ```
 
 ## Congratulations
