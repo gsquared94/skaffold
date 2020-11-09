@@ -2,6 +2,8 @@ apiVersion: skaffold/v2beta9
 kind: Config
 build:
   artifacts:
+  - image: base
+    context: base
   - image: skaffold-buildpacks
     context: app
     buildpacks:
@@ -11,5 +13,3 @@ build:
       - GOPROXY={{.GOPROXY}}
     requires:
     - image: base
-  - image: base
-    context: base
