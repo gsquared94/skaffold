@@ -6,7 +6,7 @@ build:
   artifacts:
   - image: base
     context: base
-  - image: skaffold-buildpacks
+  - image: app
     context: app
     buildpacks:
       builder: "gcr.io/buildpacks/builder:v1"

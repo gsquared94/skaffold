@@ -25,6 +25,6 @@ spec:
     spec:
       containers:
       - name: web
-        image: skaffold-buildpacks
+        image: app
         ports:
           - containerPort: 8080
