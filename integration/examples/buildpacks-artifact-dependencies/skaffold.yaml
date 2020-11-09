@@ -1,0 +1,15 @@
+apiVersion: skaffold/v2beta9
+kind: Config
+build:
+  artifacts:
+  - image: skaffold-buildpacks
+    context: app
+    buildpacks:
+      builder: "gcr.io/buildpacks/builder:v1"
+      runImage: base
+      env:
+      - GOPROXY={{.GOPROXY}}
+    requires:
+    - image: base
+  - image: base
+    context: base
