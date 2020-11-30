@@ -46,6 +46,9 @@ type SkaffoldConfig struct {
 
 	// Profiles *beta* can override be used to `build`, `test` or `deploy` configuration.
 	Profiles []Profile `yaml:"profiles,omitempty"`
+
+	// Modules *alpha* describe references to other skaffold pipelines.
+	Modules []Module `yaml:"modules,omitempty"`
 }
 
 // Metadata holds an optional name of the project.
@@ -823,6 +826,35 @@ type Profile struct {
 
 	// Pipeline contains the definitions to replace the default skaffold pipeline.
 	Pipeline `yaml:",inline"`
+
+	// ModuleProfiles defines profiles to activate in referenced modules when this profile gets activated
+	ModuleProfiles []ModuleProfile `yaml:"modules,omitempty"`
+}
+
+// Module describes a module definition
+type Module struct {
+	// ModuleRef identifies this module definition
+	ModuleRef `yaml:",inline"`
+	// Pipeline defines the Build/Test/Deploy phases.
+	Pipeline `yaml:",inline"`
+}
+
+// ModuleProfile defines a subset of profiles in the specified module to enable.
+type ModuleProfile struct {
+	// ModuleRef identifies current module definition.
+	ModuleRef `yaml:",inline"`
+
+	// Active identifies profiles in current module that should be active.
+	Active []string `yaml:"activeProfiles,omitempty"`
+}
+
+// ModuleRef identifies a module either by name or path.
+type ModuleRef struct {
+	// Name is a unique module name.
+	Name string `yaml:"name,omitempty"`
+
+	// Path is a relative path to the skaffold.yaml describing this module.
+	Path string `yaml:"path,omitempty"`
 }
 
 // JSONPatch patch to be applied by a profile.
@@ -894,6 +926,9 @@ type ArtifactDependency struct {
 	// For example, the `docker` builder will use the alias as a build-arg key.
 	// Defaults to the value of `image`.
 	Alias string `yaml:"alias,omitempty"`
+
+	// Module identifies the module that the specified required artifact belongs to.
+	Module ModuleRef `yaml:"module,omitempty"`
 }
 
 // BuildpackArtifact *alpha* describes an artifact built using [Cloud Native Buildpacks](https://buildpacks.io/).

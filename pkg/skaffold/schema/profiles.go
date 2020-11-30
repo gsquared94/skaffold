@@ -37,13 +37,26 @@ import (
 // ApplyProfiles returns configuration modified by the application
 // of a list of profiles.
 func ApplyProfiles(c *latest.SkaffoldConfig, opts cfg.SkaffoldOptions) error {
-	byName := profilesByName(c.Profiles)
+	profiles, err := ActiveProfiles(c, opts)
+	if err != nil {
+		return err
+	}
+	return ResolveProfiles(c, profiles)
+}
 
+func ActiveProfiles(c *latest.SkaffoldConfig, opts cfg.SkaffoldOptions) ([]string, error) {
 	profiles, contextSpecificProfiles, err := activatedProfiles(c.Profiles, opts)
 	if err != nil {
-		return fmt.Errorf("finding auto-activated profiles: %w", err)
+		return nil, fmt.Errorf("finding auto-activated profiles: %w", err)
 	}
+	if err = checkKubeContextConsistency(contextSpecificProfiles, opts.KubeContext, c.Deploy.KubeContext); err != nil {
+		return nil, err
+	}
+	return profiles, nil
+}
 
+func ResolveProfiles(c *latest.SkaffoldConfig, profiles []string) error {
+	byName := profilesByName(c.Profiles)
 	for _, name := range profiles {
 		profile, present := byName[name]
 		if !present {
@@ -54,8 +67,7 @@ func ApplyProfiles(c *latest.SkaffoldConfig, opts cfg.SkaffoldOptions) error {
 			return fmt.Errorf("applying profile %q: %w", name, err)
 		}
 	}
-
-	return checkKubeContextConsistency(contextSpecificProfiles, opts.KubeContext, c.Deploy.KubeContext)
+	return nil
 }
 
 func checkKubeContextConsistency(contextSpecificProfiles []string, cliContext, effectiveContext string) error {
