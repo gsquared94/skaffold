@@ -79,6 +79,49 @@ profiles:
 	})
 }
 
+func TestApplyHelmPatch(t *testing.T) {
+	config := `deploy:
+  helm:
+    releases:
+    - name: skaffold-helm
+      chartPath: charts
+      artifactOverrides:
+        image: skaffold-helm
+      setValues:
+        foo: bar
+profiles:
+- name: patches1
+  patches:
+  - op: add
+    path: /deploy/helm/releases/0/setValues/foo1
+    value: 
+      bar1: bazz1
+- name: patches2
+  patches:
+  - op: add
+    path: /deploy/helm/releases/0/setValues/foo2
+    value: bar2
+`
+
+	testutil.Run(t, "", func(t *testutil.T) {
+		setupFakeKubeConfig(t, api.Config{CurrentContext: "prod-context"})
+		tmpDir := t.NewTempDir().
+			Write("skaffold.yaml", addVersion(config))
+
+		parsed, err := ParseConfig(tmpDir.Path("skaffold.yaml"))
+		t.CheckNoError(err)
+
+		skaffoldConfig := parsed.(*latest.SkaffoldConfig)
+		err = ApplyProfiles(skaffoldConfig, cfg.SkaffoldOptions{
+			Profiles: []string{"patches1", "patches2"},
+		})
+
+		t.CheckNoError(err)
+		t.CheckDeepEqual(2, len(skaffoldConfig.Deploy.HelmDeploy.Releases[0].SetValues))
+		t.CheckDeepEqual(latest.BuildConfig{}, skaffoldConfig.Build)
+	})
+}
+
 func TestApplyInvalidPatch(t *testing.T) {
 	config := `build:
   artifacts:
