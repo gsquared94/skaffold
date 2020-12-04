@@ -27,6 +27,7 @@ import (
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/color"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	sErrors "github.com/GoogleContainerTools/skaffold/pkg/skaffold/errors"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/event"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/filemon"
@@ -130,6 +131,7 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 	event.DevLoopInProgress(r.devIteration)
 	defer func() { r.devIteration++ }()
 	g := getTransposeGraph(artifacts)
+	docker.ResetDependencyCache()
 	// Watch artifacts
 	start := time.Now()
 	color.Default.Fprintln(out, "Listing files to watch...")

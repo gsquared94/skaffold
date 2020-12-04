@@ -47,6 +47,10 @@ func NormalizeDockerfilePath(context, dockerfile string) (string, error) {
 	return filepath.Abs(rel)
 }
 
+func ResetDependencyCache() {
+	dependencyCache = util.NewSyncStore()
+}
+
 // GetDependencies finds the sources dependency for the given docker artifact.
 // All paths are relative to the workspace.
 func GetDependencies(ctx context.Context, workspace string, dockerfilePath string, buildArgs map[string]*string, cfg Config) ([]string, error) {
