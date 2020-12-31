@@ -83,6 +83,7 @@ type SkaffoldOptions struct {
 	TargetImages       []string
 	Profiles           []string
 	InsecureRegistries []string
+	TargetConfigs []string
 	Muted              Muted
 	Command            string
 	RPCPort            int

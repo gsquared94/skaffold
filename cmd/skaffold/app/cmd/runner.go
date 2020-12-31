@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 
+	skutil "github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 	"github.com/sirupsen/logrus"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
@@ -90,7 +91,6 @@ func runContext(opts config.SkaffoldOptions) (*runcontext.RunContext, []*latest.
 	}
 
 	setDefaultDeployer := setDefaultDeployer(parsed)
-	var pipelines []latest.Pipeline
 	var configs []*latest.SkaffoldConfig
 	for _, cfg := range parsed {
 		config := cfg.(*latest.SkaffoldConfig)
@@ -101,8 +101,14 @@ func runContext(opts config.SkaffoldOptions) (*runcontext.RunContext, []*latest.
 		if err := defaults.Set(config, setDefaultDeployer); err != nil {
 			return nil, nil, fmt.Errorf("setting default values: %w", err)
 		}
-		pipelines = append(pipelines, config.Pipeline)
 		configs = append(configs, config)
+	}
+
+	if len(opts.TargetConfigs) > 0 {
+		configs, err = filterTargetConfigs(configs, opts.TargetConfigs)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// TODO: Should support per-config kubecontext. Right now we constrain all configs to define the same kubecontext.
@@ -112,6 +118,10 @@ func runContext(opts config.SkaffoldOptions) (*runcontext.RunContext, []*latest.
 		return nil, nil, fmt.Errorf("invalid skaffold config: %w", err)
 	}
 
+	var pipelines []latest.Pipeline
+	for _, c := range configs {
+		pipelines = append(pipelines, c.Pipeline)
+	}
 	runCtx, err := runcontext.GetRunContext(opts, pipelines)
 	if err != nil {
 		return nil, nil, fmt.Errorf("getting run context: %w", err)
@@ -122,6 +132,26 @@ func runContext(opts config.SkaffoldOptions) (*runcontext.RunContext, []*latest.
 	}
 
 	return runCtx, configs, nil
+}
+
+func filterTargetConfigs(configs []*latest.SkaffoldConfig, filter []string) ([]*latest.SkaffoldConfig, error) {
+		var result []*latest.SkaffoldConfig
+		duplicates := make(map[string]bool)
+		for _, c := range configs {
+			name := c.Metadata.Name
+			if name == "" {
+				continue
+			}
+			if !skutil.StrSliceContains(filter, name) {
+				continue
+			}
+			if duplicates[name] {
+				return nil, fmt.Errorf("failed to apply config filter: found more than one config named %q", name)
+			}
+			result = append(result, c)
+			duplicates[name] = true
+		}
+		return result, nil
 }
 
 func setDefaultDeployer(configs []util.VersionedConfig) bool {

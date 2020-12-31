@@ -460,6 +460,15 @@ var flagRegistry = []Flag{
 		FlagAddMethod: "Var",
 		DefinedOn:     []string{"test", "deploy"},
 	},
+	{
+		Name:          "configuration",
+		Shorthand:     "cfg",
+		Usage:         "Activate skaffold config by name",
+		Value:         &opts.TargetConfigs,
+		DefValue:      []string{},
+		FlagAddMethod: "StringSliceVar",
+		DefinedOn:     []string{"dev", "run", "debug", "deploy", "render", "build", "delete", "diagnose"},
+	},
 }
 
 func methodNameByType(v reflect.Value) string {
