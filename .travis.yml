@@ -9,7 +9,7 @@ git:
 
 branches:
   only:
-    - master
+    - travis-test
 
 _integration_test: &integration_test
   os: linux
