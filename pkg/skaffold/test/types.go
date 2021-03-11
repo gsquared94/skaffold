@@ -45,7 +45,7 @@ type Muted interface {
 // FullTester should always be the ONLY implementation of the Tester interface;
 // newly added testing implementations should implement the runner interface.
 type FullTester struct {
-	runners []runner
+	runners map[string]runner
 	muted   Muted
 	// imagesAreLocal func(imageName string) (bool, error)
 }

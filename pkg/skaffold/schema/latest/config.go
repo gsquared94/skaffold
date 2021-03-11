@@ -701,7 +701,7 @@ type HelmRelease struct {
 
 	// SetValues are key-value pairs.
 	// If present, Skaffold will send `--set` flag to Helm CLI and append all pairs after the flag.
-	SetValues util.FlatMap `yaml:"setValues,omitempty"`
+	SetValues util.FlatMap `yaml:"setValues,omitempty" skaffold:"filepath"`
 
 	// SetValueTemplates are key-value pairs.
 	// If present, Skaffold will try to parse the value part of each key-value pair using

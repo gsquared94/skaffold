@@ -19,6 +19,7 @@ package runner
 import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/sync"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/test"
 )
 
 type changeSet struct {
@@ -27,6 +28,7 @@ type changeSet struct {
 	needsResync    []*sync.Item
 	resyncTracker  map[string]*sync.Item
 	needsRedeploy  bool
+	needsRetest  []*test.Tester
 	needsReload    bool
 }
 

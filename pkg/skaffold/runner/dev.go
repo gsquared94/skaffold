@@ -188,15 +188,16 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 		}
 	}
 
-	// Watch test configuration
-	if err := r.monitor.Register(
-		r.tester.TestDependencies,
-		func(filemon.Events) { r.changeSet.needsRedeploy = true },
-	); err != nil {
-		event.DevLoopFailedWithErrorCode(r.devIteration, proto.StatusCode_DEVINIT_REGISTER_TEST_DEPS, err)
-		return fmt.Errorf("watching test files: %w", err)
+	for _, tester := range r.tester.GetAllTesters() {
+		// Watch test configuration
+		if err := r.monitor.Register(
+			tester.TestDependencies,
+			func(filemon.Events) { r.changeSet.needsRetest = append(r.changeSet.needsRetest, &tester) },
+		); err != nil {
+			event.DevLoopFailedWithErrorCode(r.devIteration, proto.StatusCode_DEVINIT_REGISTER_TEST_DEPS, err)
+			return fmt.Errorf("watching test files: %w", err)
+		}
 	}
-
 	// Watch deployment configuration
 	if err := r.monitor.Register(
 		r.deployer.Dependencies,

@@ -43,7 +43,7 @@ type Config interface {
 // NewTester parses the provided test cases from the Skaffold config,
 // and returns a Tester instance with all the necessary test runners
 // to run all specified tests.
-func NewTester(cfg Config, imagesAreLocal func(imageName string) (bool, error)) (Tester, error) {
+func NewTester(cfg Config, imagesAreLocal func(imageName string) (bool, error)) (FullTester, error) {
 	runner, err := getRunner(cfg, imagesAreLocal, cfg.TestCases())
 	if err != nil {
 		return nil, err
@@ -55,17 +55,13 @@ func NewTester(cfg Config, imagesAreLocal func(imageName string) (bool, error)) 
 	}, nil
 }
 
+type TesterProvider interface {
+	GetAllTesters() []Tester
+}
+
 // TestDependencies returns the watch dependencies to the runner.
-func (t FullTester) TestDependencies() ([]string, error) {
-	var deps []string
-	for _, tester := range t.runners {
-		result, err := tester.TestDependencies()
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, result...)
-	}
-	return deps, nil
+func (t FullTester) GetAllTesters() []Tester {
+
 }
 
 // Test is the top level testing execution call. It serves as the
