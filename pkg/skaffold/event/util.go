@@ -23,7 +23,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/proto/v1"
 )
 
-func initializeMetadata(pipelines []latest.Pipeline, kubeContext string) *proto.Metadata {
+func initializeMetadata(pipelines []latest.Pipeline, moduleNames []string, kubeContext string) *proto.Metadata {
 	artifactCount := 0
 	for _, p := range pipelines {
 		artifactCount += len(p.Build.Artifacts)

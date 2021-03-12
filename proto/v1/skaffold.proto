@@ -36,6 +36,7 @@ message Metadata {
     BuildMetadata build = 1;
     DeployMetadata deploy = 2;
     TestMetadata test = 3;
+    ConfigurationMetadata configs = 4;
     // Additional key value pairs to describe the build pipeline
     map<string, string> additional = 99;
 }

@@ -80,10 +80,6 @@ func runContext(out io.Writer, opts config.SkaffoldOptions) (*runcontext.RunCont
 		return nil, nil, err
 	}
 	setDefaultDeployer(configs)
-	var pipelines []latest.Pipeline
-	for _, cfg := range configs {
-		pipelines = append(pipelines, cfg.Pipeline)
-	}
 
 	// TODO: Should support per-config kubecontext. Right now we constrain all configs to define the same kubecontext.
 	kubectx.ConfigureKubeConfig(opts.KubeConfig, opts.KubeContext, configs[0].Deploy.KubeContext)
@@ -92,7 +88,7 @@ func runContext(out io.Writer, opts config.SkaffoldOptions) (*runcontext.RunCont
 		return nil, nil, fmt.Errorf("invalid skaffold config: %w", err)
 	}
 
-	runCtx, err := runcontext.GetRunContext(opts, pipelines)
+	runCtx, err := runcontext.GetRunContext(opts, configs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("getting run context: %w", err)
 	}
