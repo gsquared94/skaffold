@@ -48,6 +48,7 @@ type Config interface {
 	GetKubeContext() string
 	Muted() config.Muted
 	Mode() config.RunMode
+	GetArtifactStore() build.ArtifactStore
 }
 
 // NewBuilder creates a new Builder that builds artifacts on cluster.
@@ -62,12 +63,9 @@ func NewBuilder(cfg Config, buildCfg *latest.ClusterDetails) (*Builder, error) {
 		cfg:            cfg,
 		kubectlcli:     kubectl.NewCLI(cfg, ""),
 		mode:           cfg.Mode(),
+		artifactStore:  cfg.GetArtifactStore(),
 		timeout:        timeout,
 	}, nil
-}
-
-func (b *Builder) ArtifactStore(store build.ArtifactStore) {
-	b.artifactStore = store
 }
 
 func (b *Builder) Prune(ctx context.Context, out io.Writer) error {

@@ -84,6 +84,7 @@ type Builder struct {
 	skipTests     bool
 	muted         build.Muted
 	artifactStore build.ArtifactStore
+	depsResolver  build.DependencyResolver
 }
 
 type Config interface {
@@ -91,6 +92,8 @@ type Config interface {
 
 	SkipTests() bool
 	Muted() config.Muted
+	GetArtifactStore() build.ArtifactStore
+	GetDependenciesResolver() build.DependencyResolver
 }
 
 // NewBuilder creates a new Builder that builds artifacts with Google Cloud Build.
@@ -100,11 +103,9 @@ func NewBuilder(cfg Config, buildCfg *latest.GoogleCloudBuild) *Builder {
 		cfg:              cfg,
 		skipTests:        cfg.SkipTests(),
 		muted:            cfg.Muted(),
+		artifactStore:    cfg.GetArtifactStore(),
+		depsResolver:     cfg.GetDependenciesResolver(),
 	}
-}
-
-func (b *Builder) ArtifactStore(store build.ArtifactStore) {
-	b.artifactStore = store
 }
 
 func (b *Builder) Prune(ctx context.Context, out io.Writer) error {

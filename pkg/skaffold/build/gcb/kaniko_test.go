@@ -356,18 +356,10 @@ func TestKanikoBuildSpec(t *testing.T) {
 		},
 	}
 
-	builder := NewBuilder(&mockConfig{}, &latest.GoogleCloudBuild{
-		KanikoImage: "gcr.io/kaniko-project/executor",
-		DiskSizeGb:  100,
-		MachineType: "n1-standard-1",
-		Timeout:     "10m",
-	})
-
 	defaultExpectedArgs := []string{
 		"--destination", "gcr.io/nginx",
 		"--dockerfile", "Dockerfile",
 	}
-
 	for _, test := range tests {
 		testutil.Run(t, test.description, func(t *testutil.T) {
 			artifact := &latest.Artifact{
@@ -384,7 +376,13 @@ func TestKanikoBuildSpec(t *testing.T) {
 				"img2": "img2:tag",
 				"img3": "img3:tag",
 			}
-			builder.ArtifactStore(store)
+
+			builder := NewBuilder(&mockConfig{artifactStore: func() build.ArtifactStore { return store }}, &latest.GoogleCloudBuild{
+				KanikoImage: "gcr.io/kaniko-project/executor",
+				DiskSizeGb:  100,
+				MachineType: "n1-standard-1",
+				Timeout:     "10m",
+			})
 			imageArgs := []string{kaniko.BuildArgsFlag, "IMG2=img2:tag", kaniko.BuildArgsFlag, "IMG3=img3:tag"}
 
 			t.Override(&docker.EvalBuildArgs, func(_ config.RunMode, _ string, _ string, args map[string]*string, extra map[string]*string) (map[string]*string, error) {

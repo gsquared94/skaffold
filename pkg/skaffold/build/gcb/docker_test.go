@@ -21,6 +21,7 @@ import (
 
 	cloudbuild "google.golang.org/api/cloudbuild/v1"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
@@ -143,17 +144,16 @@ func TestDockerBuildSpec(t *testing.T) {
 				}
 				return m, nil
 			})
-			builder := NewBuilder(&mockConfig{}, &latest.GoogleCloudBuild{
+			store := mockArtifactStore{
+				"img2": "img2:tag",
+				"img3": "img3:tag",
+			}
+			builder := NewBuilder(&mockConfig{artifactStore: func() build.ArtifactStore { return store }}, &latest.GoogleCloudBuild{
 				DockerImage: "docker/docker",
 				DiskSizeGb:  100,
 				MachineType: "n1-standard-1",
 				Timeout:     "10m",
 			})
-			store := mockArtifactStore{
-				"img2": "img2:tag",
-				"img3": "img3:tag",
-			}
-			builder.ArtifactStore(store)
 			desc, err := builder.buildSpec(test.artifact, "nginx", "bucket", "object")
 			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expected, desc)
 		})

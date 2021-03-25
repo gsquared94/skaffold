@@ -22,6 +22,7 @@ import (
 
 	cloudbuild "google.golang.org/api/cloudbuild/v1"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/jib"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/testutil"
@@ -68,16 +69,15 @@ func TestJibMavenBuildSpec(t *testing.T) {
 					{ImageName: "img3", Alias: "img3"},
 				},
 			}
-
-			builder := NewBuilder(&mockConfig{}, &latest.GoogleCloudBuild{
-				MavenImage: "maven:3.6.0",
-			})
-			builder.skipTests = test.skipTests
 			store := mockArtifactStore{
 				"img2": "img2:tag",
 				"img3": "img3:tag",
 			}
-			builder.ArtifactStore(store)
+			builder := NewBuilder(&mockConfig{artifactStore: func() build.ArtifactStore { return store }}, &latest.GoogleCloudBuild{
+				MavenImage: "maven:3.6.0",
+			})
+			builder.skipTests = test.skipTests
+
 			buildSpec, err := builder.buildSpec(artifact, "img", "bucket", "object")
 			t.CheckNoError(err)
 

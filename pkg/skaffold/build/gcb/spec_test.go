@@ -19,6 +19,7 @@ package gcb
 import (
 	"testing"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/runner/runcontext"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/testutil"
@@ -55,4 +56,19 @@ func TestBuildSpecFail(t *testing.T) {
 
 type mockConfig struct {
 	runcontext.RunContext // Embedded to provide the default values.
+	artifactStore         func() build.ArtifactStore
+	depsResolver          func() build.DependencyResolver
+}
+
+func (m *mockConfig) GetArtifactStore() build.ArtifactStore {
+	if m.artifactStore != nil {
+		return m.artifactStore()
+	}
+	return nil
+}
+func (m *mockConfig) GetDependenciesResolver() build.DependencyResolver {
+	if m.depsResolver != nil {
+		return m.depsResolver()
+	}
+	return nil
 }

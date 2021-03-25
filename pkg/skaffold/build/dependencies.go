@@ -30,8 +30,56 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 )
 
-// DependenciesForArtifact returns the dependencies for a given artifact.
-func DependenciesForArtifact(ctx context.Context, a *latest.Artifact, cfg docker.Config, r docker.ArtifactResolver) ([]string, error) {
+// for testing
+var getDependenciesFunc = dependenciesForSingleArtifact
+
+type DependencyResolver interface {
+	DependenciesForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error)
+	Reset()
+}
+
+func GetDependenciesResolver(cfg docker.Config, r docker.ArtifactResolver, g ArtifactGraph) DependencyResolver {
+	return &dependencyResolverImpl{cfg: cfg, r: r, g: g, cache: util.NewSyncStore()}
+}
+
+type dependencyResolverImpl struct {
+	cfg   docker.Config
+	r     docker.ArtifactResolver
+	g     ArtifactGraph
+	cache *util.SyncStore
+}
+
+// DependenciesForArtifact returns the build dependencies for a given artifact.
+// This additionally includes the build dependencies from all other artifacts that are in the transitive closure of its artifact dependencies.
+func (r *dependencyResolverImpl) DependenciesForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error) {
+	res := r.cache.Exec(a.ImageName, func() interface{} {
+		d, e := getDependenciesFunc(ctx, a, r.cfg, r.r)
+		if e != nil {
+			return e
+		}
+		return d
+	})
+	if err, ok := res.(error); ok {
+		return nil, err
+	}
+
+	deps := res.([]string)
+	for _, ad := range a.Dependencies {
+		d, err := r.DependenciesForArtifact(ctx, r.g[ad.ImageName])
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, d...)
+	}
+	return deps, nil
+}
+
+func (r *dependencyResolverImpl) Reset() {
+	r.cache = util.NewSyncStore()
+}
+
+// dependenciesForSingleArtifact returns the build dependencies for the current artifact.
+func dependenciesForSingleArtifact(ctx context.Context, a *latest.Artifact, cfg docker.Config, r docker.ArtifactResolver) ([]string, error) {
 	var (
 		paths []string
 		err   error

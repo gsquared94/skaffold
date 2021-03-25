@@ -55,6 +55,7 @@ type Builder struct {
 	muted              build.Muted
 	localPruner        *pruner
 	artifactStore      build.ArtifactStore
+	depsResolver       build.DependencyResolver
 }
 
 type Config interface {
@@ -67,6 +68,8 @@ type Config interface {
 	Mode() config.RunMode
 	NoPruneChildren() bool
 	Muted() config.Muted
+	GetArtifactStore() build.ArtifactStore
+	GetDependenciesResolver() build.DependencyResolver
 }
 
 // NewBuilder returns an new instance of a local Builder.
@@ -103,11 +106,9 @@ func NewBuilder(cfg Config, buildCfg *latest.LocalBuild) (*Builder, error) {
 		localPruner:        newPruner(localDocker, !cfg.NoPruneChildren()),
 		insecureRegistries: cfg.GetInsecureRegistries(),
 		muted:              cfg.Muted(),
+		artifactStore:      cfg.GetArtifactStore(),
+		depsResolver:       cfg.GetDependenciesResolver(),
 	}, nil
-}
-
-func (b *Builder) ArtifactStore(store build.ArtifactStore) {
-	b.artifactStore = store
 }
 
 // Prune uses the docker API client to remove all images built with Skaffold
@@ -134,7 +135,7 @@ type artifactBuilder interface {
 func newPerArtifactBuilder(b *Builder, a *latest.Artifact) (artifactBuilder, error) {
 	switch {
 	case a.DockerArtifact != nil:
-		return dockerbuilder.NewArtifactBuilder(b.localDocker, b.local.UseDockerCLI, b.local.UseBuildkit, b.pushImages, b.prune, b.cfg.Mode(), b.cfg.GetInsecureRegistries(), b.artifactStore), nil
+		return dockerbuilder.NewArtifactBuilder(b.localDocker, b.local.UseDockerCLI, b.local.UseBuildkit, b.pushImages, b.prune, b.cfg.Mode(), b.cfg.GetInsecureRegistries(), b.artifactStore, b.depsResolver), nil
 
 	case a.BazelArtifact != nil:
 		return bazel.NewArtifactBuilder(b.localDocker, b.cfg, b.pushImages), nil

@@ -237,13 +237,12 @@ func TestLocalRun(t *testing.T) {
 					},
 				}}})
 
-			builder, err := NewBuilder(&mockConfig{},
+			builder, err := NewBuilder(&mockConfig{artifactStore: build.NewArtifactStore},
 				&latest.LocalBuild{
 					Push:        util.BoolPtr(test.pushImages),
 					Concurrency: &constants.DefaultLocalConcurrency,
 				})
 			t.CheckNoError(err)
-			builder.ArtifactStore(build.NewArtifactStore())
 			ab := builder.Build(context.Background(), ioutil.Discard, test.artifact)
 			res, err := ab(context.Background(), ioutil.Discard, test.artifact, test.tag)
 			t.CheckErrorAndDeepEqual(test.shouldErr, err, test.expected, res)
@@ -382,9 +381,8 @@ func TestGetArtifactBuilder(t *testing.T) {
 				return args, nil
 			})
 
-			b, err := NewBuilder(&mockConfig{}, &latest.LocalBuild{Concurrency: &constants.DefaultLocalConcurrency})
+			b, err := NewBuilder(&mockConfig{artifactStore: build.NewArtifactStore}, &latest.LocalBuild{Concurrency: &constants.DefaultLocalConcurrency})
 			t.CheckNoError(err)
-			b.ArtifactStore(build.NewArtifactStore())
 
 			builder, err := newPerArtifactBuilder(b, test.artifact)
 			t.CheckNoError(err)
@@ -414,6 +412,8 @@ type mockConfig struct {
 	local                 latest.LocalBuild
 	mode                  config.RunMode
 	cluster               config.Cluster
+	artifactStore         func() build.ArtifactStore
+	depsResolver          func() build.DependencyResolver
 }
 
 func (c *mockConfig) Mode() config.RunMode {
@@ -422,4 +422,18 @@ func (c *mockConfig) Mode() config.RunMode {
 
 func (c *mockConfig) GetCluster() config.Cluster {
 	return c.cluster
+}
+
+func (c *mockConfig) GetArtifactStore() build.ArtifactStore {
+	if c.artifactStore != nil {
+		return c.artifactStore()
+	}
+	return nil
+}
+
+func (c *mockConfig) GetDependenciesResolver() build.DependencyResolver {
+	if c.depsResolver != nil {
+		return c.depsResolver()
+	}
+	return nil
 }

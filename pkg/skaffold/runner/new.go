@@ -62,9 +62,12 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 	}
 
 	store := build.NewArtifactStore()
+	graph := build.ToArtifactGraph(runCtx.Artifacts())
+	depsResolver := build.GetDependenciesResolver(runCtx, store, graph)
+
 	var builder build.Builder
 	builder, err = build.NewBuilderMux(runCtx, store, func(p latest.Pipeline) (build.PipelineBuilder, error) {
-		return getBuilder(runCtx, store, p)
+		return getBuilder(runCtx, store, depsResolver, p)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating builder: %w", err)
@@ -83,8 +86,9 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating deployer: %w", err)
 	}
+
 	depLister := func(ctx context.Context, artifact *latest.Artifact) ([]string, error) {
-		buildDependencies, err := build.DependenciesForArtifact(ctx, artifact, runCtx, store)
+		buildDependencies, err := depsResolver.DependenciesForArtifact(ctx, artifact)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +101,6 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 		return append(buildDependencies, testDependencies...), nil
 	}
 
-	graph := build.ToArtifactGraph(runCtx.Artifacts())
 	artifactCache, err := cache.NewCache(runCtx, isLocalImage, depLister, graph, store)
 	if err != nil {
 		return nil, fmt.Errorf("initializing cache: %w", err)
@@ -123,11 +126,13 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 		syncer:   syncer,
 		monitor:  monitor,
 		listener: &SkaffoldListener{
-			Monitor:    monitor,
-			Trigger:    trigger,
-			intentChan: intentChan,
+			Monitor:      monitor,
+			Trigger:      trigger,
+			intentChan:   intentChan,
+			depsResolver: depsResolver,
 		},
 		artifactStore: store,
+		depsResolver:  depsResolver,
 		kubectlCLI:    kubectlCLI,
 		labeller:      labeller,
 		podSelector:   kubernetes.NewImageList(),
@@ -192,31 +197,43 @@ func isImageLocal(runCtx *runcontext.RunContext, imageName string) (bool, error)
 	return !pushImages, nil
 }
 
+type buildCtx struct {
+	*runcontext.RunContext
+	s build.ArtifactStore
+	d build.DependencyResolver
+}
+
+func (b *buildCtx) GetArtifactStore() build.ArtifactStore {
+	return b.s
+}
+
+func (b *buildCtx) GetDependenciesResolver() build.DependencyResolver {
+	return b.d
+}
+
 // getBuilder creates a builder from a given RunContext and build pipeline type.
-func getBuilder(runCtx *runcontext.RunContext, store build.ArtifactStore, p latest.Pipeline) (build.PipelineBuilder, error) {
+func getBuilder(runCtx *runcontext.RunContext, s build.ArtifactStore, d build.DependencyResolver, p latest.Pipeline) (build.PipelineBuilder, error) {
+	bCtx := &buildCtx{RunContext: runCtx, s: s, d: d}
 	switch {
 	case p.Build.LocalBuild != nil:
 		logrus.Debugln("Using builder: local")
-		builder, err := local.NewBuilder(runCtx, p.Build.LocalBuild)
+		builder, err := local.NewBuilder(bCtx, p.Build.LocalBuild)
 		if err != nil {
 			return nil, err
 		}
-		builder.ArtifactStore(store)
 		return builder, nil
 
 	case p.Build.GoogleCloudBuild != nil:
 		logrus.Debugln("Using builder: google cloud")
-		builder := gcb.NewBuilder(runCtx, p.Build.GoogleCloudBuild)
-		builder.ArtifactStore(store)
+		builder := gcb.NewBuilder(bCtx, p.Build.GoogleCloudBuild)
 		return builder, nil
 
 	case p.Build.Cluster != nil:
 		logrus.Debugln("Using builder: cluster")
-		builder, err := cluster.NewBuilder(runCtx, p.Build.Cluster)
+		builder, err := cluster.NewBuilder(bCtx, p.Build.Cluster)
 		if err != nil {
 			return nil, err
 		}
-		builder.ArtifactStore(store)
 		return builder, err
 
 	default:

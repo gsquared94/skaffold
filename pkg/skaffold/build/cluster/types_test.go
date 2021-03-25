@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/runner/runcontext"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
@@ -90,9 +91,16 @@ type mockConfig struct {
 	namespace             string
 	insecureRegistries    map[string]bool
 	runMode               config.RunMode
+	artifactStore         func() build.ArtifactStore
 }
 
 func (c *mockConfig) GetKubeContext() string                 { return c.kubeContext }
 func (c *mockConfig) GetKubeNamespace() string               { return c.namespace }
 func (c *mockConfig) GetInsecureRegistries() map[string]bool { return c.insecureRegistries }
 func (c *mockConfig) Mode() config.RunMode                   { return c.runMode }
+func (c *mockConfig) GetArtifactStore() build.ArtifactStore {
+	if c.artifactStore != nil {
+		return c.artifactStore()
+	}
+	return nil
+}

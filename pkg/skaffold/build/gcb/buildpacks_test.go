@@ -21,6 +21,7 @@ import (
 
 	cloudbuild "google.golang.org/api/cloudbuild/v1"
 
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 	"github.com/GoogleContainerTools/skaffold/testutil"
@@ -190,10 +191,9 @@ func TestBuildpackBuildSpec(t *testing.T) {
 				"img2": "img2:tag",
 				"img3": "img3:tag",
 			}
-			builder := NewBuilder(&mockConfig{}, &latest.GoogleCloudBuild{
+			builder := NewBuilder(&mockConfig{artifactStore: func() build.ArtifactStore { return store }}, &latest.GoogleCloudBuild{
 				PackImage: "pack/image",
 			})
-			builder.ArtifactStore(store)
 			buildSpec, err := builder.buildSpec(artifact, "img", "bucket", "object")
 			t.CheckError(test.shouldErr, err)
 
