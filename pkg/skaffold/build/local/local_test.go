@@ -413,7 +413,7 @@ type mockConfig struct {
 	mode                  config.RunMode
 	cluster               config.Cluster
 	artifactStore         func() build.ArtifactStore
-	depsResolver          func() build.DependencyResolver
+	depsResolver          func() build.TransitiveSourceDependenciesCache
 }
 
 func (c *mockConfig) Mode() config.RunMode {
@@ -431,7 +431,7 @@ func (c *mockConfig) GetArtifactStore() build.ArtifactStore {
 	return nil
 }
 
-func (c *mockConfig) GetDependenciesResolver() build.DependencyResolver {
+func (c *mockConfig) GetDependenciesResolver() build.TransitiveSourceDependenciesCache {
 	if c.depsResolver != nil {
 		return c.depsResolver()
 	}

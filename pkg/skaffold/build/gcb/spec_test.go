@@ -57,7 +57,7 @@ func TestBuildSpecFail(t *testing.T) {
 type mockConfig struct {
 	runcontext.RunContext // Embedded to provide the default values.
 	artifactStore         func() build.ArtifactStore
-	depsResolver          func() build.DependencyResolver
+	depsResolver          func() build.TransitiveSourceDependenciesCache
 }
 
 func (m *mockConfig) GetArtifactStore() build.ArtifactStore {
@@ -66,7 +66,7 @@ func (m *mockConfig) GetArtifactStore() build.ArtifactStore {
 	}
 	return nil
 }
-func (m *mockConfig) GetDependenciesResolver() build.DependencyResolver {
+func (m *mockConfig) GetDependenciesResolver() build.TransitiveSourceDependenciesCache {
 	if m.depsResolver != nil {
 		return m.depsResolver()
 	}

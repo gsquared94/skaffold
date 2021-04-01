@@ -74,7 +74,7 @@ type SkaffoldRunner struct {
 	labeller      *label.DefaultLabeller
 	builds        []build.Artifact
 	artifactStore build.ArtifactStore
-	depsResolver  build.DependencyResolver
+	depsResolver  build.TransitiveSourceDependenciesCache
 	// podSelector is used to determine relevant pods for logging and portForwarding
 	podSelector *kubernetes.ImageList
 

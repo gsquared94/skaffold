@@ -185,7 +185,7 @@ func (r *SkaffoldRunner) Dev(ctx context.Context, out io.Writer, artifacts []*la
 		default:
 			if err := r.monitor.Register(
 				func() ([]string, error) {
-					return r.depsResolver.DependenciesForArtifact(ctx, artifact)
+					return r.depsResolver.ResolveForArtifact(ctx, artifact)
 				},
 				func(e filemon.Events) {
 					s, err := sync.NewItem(ctx, artifact, e, r.builds, r.runCtx, len(g[artifact.ImageName]))

@@ -55,7 +55,7 @@ type Builder struct {
 	muted              build.Muted
 	localPruner        *pruner
 	artifactStore      build.ArtifactStore
-	depsResolver       build.DependencyResolver
+	depsResolver       build.TransitiveSourceDependenciesCache
 }
 
 type Config interface {
@@ -69,7 +69,7 @@ type Config interface {
 	NoPruneChildren() bool
 	Muted() config.Muted
 	GetArtifactStore() build.ArtifactStore
-	GetDependenciesResolver() build.DependencyResolver
+	GetDependenciesResolver() build.TransitiveSourceDependenciesCache
 }
 
 // NewBuilder returns an new instance of a local Builder.

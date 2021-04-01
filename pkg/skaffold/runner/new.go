@@ -63,7 +63,7 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 
 	store := build.NewArtifactStore()
 	graph := build.ToArtifactGraph(runCtx.Artifacts())
-	depsResolver := build.GetDependenciesResolver(runCtx, store, graph)
+	depsResolver := build.NewTransitiveSourceDependenciesCache(runCtx, store, graph)
 
 	var builder build.Builder
 	builder, err = build.NewBuilderMux(runCtx, store, func(p latest.Pipeline) (build.PipelineBuilder, error) {
@@ -88,7 +88,7 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 	}
 
 	depLister := func(ctx context.Context, artifact *latest.Artifact) ([]string, error) {
-		buildDependencies, err := depsResolver.DependenciesForArtifact(ctx, artifact)
+		buildDependencies, err := depsResolver.ResolveForArtifact(ctx, artifact)
 		if err != nil {
 			return nil, err
 		}
@@ -200,19 +200,19 @@ func isImageLocal(runCtx *runcontext.RunContext, imageName string) (bool, error)
 type buildCtx struct {
 	*runcontext.RunContext
 	s build.ArtifactStore
-	d build.DependencyResolver
+	d build.TransitiveSourceDependenciesCache
 }
 
 func (b *buildCtx) GetArtifactStore() build.ArtifactStore {
 	return b.s
 }
 
-func (b *buildCtx) GetDependenciesResolver() build.DependencyResolver {
+func (b *buildCtx) GetDependenciesResolver() build.TransitiveSourceDependenciesCache {
 	return b.d
 }
 
 // getBuilder creates a builder from a given RunContext and build pipeline type.
-func getBuilder(runCtx *runcontext.RunContext, s build.ArtifactStore, d build.DependencyResolver, p latest.Pipeline) (build.PipelineBuilder, error) {
+func getBuilder(runCtx *runcontext.RunContext, s build.ArtifactStore, d build.TransitiveSourceDependenciesCache, p latest.Pipeline) (build.PipelineBuilder, error) {
 	bCtx := &buildCtx{RunContext: runCtx, s: s, d: d}
 	switch {
 	case p.Build.LocalBuild != nil:

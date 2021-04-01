@@ -34,7 +34,7 @@ type Builder struct {
 	mode               config.RunMode
 	insecureRegistries map[string]bool
 	artifacts          ArtifactResolver
-	deps               DependencyResolver
+	deps               TransitiveSourceDependenciesResolver
 }
 
 // ArtifactResolver provides an interface to resolve built artifact tags by image name.
@@ -42,13 +42,13 @@ type ArtifactResolver interface {
 	GetImageTag(imageName string) (string, bool)
 }
 
-// ArtifactResolver provides an interface to resolve built artifact tags by image name.
-type DependencyResolver interface {
-	DependenciesForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error)
+// TransitiveSourceDependenciesResolver provides an interface to to evaluate the source dependencies for artifacts.
+type TransitiveSourceDependenciesResolver interface {
+	ResolveForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error)
 }
 
 // NewBuilder returns an new instance of a docker builder
-func NewArtifactBuilder(localDocker docker.LocalDaemon, useCLI, useBuildKit, pushImages, prune bool, mode config.RunMode, insecureRegistries map[string]bool, ar ArtifactResolver, dr DependencyResolver) *Builder {
+func NewArtifactBuilder(localDocker docker.LocalDaemon, useCLI, useBuildKit, pushImages, prune bool, mode config.RunMode, insecureRegistries map[string]bool, ar ArtifactResolver, dr TransitiveSourceDependenciesResolver) *Builder {
 	return &Builder{
 		localDocker:        localDocker,
 		pushImages:         pushImages,

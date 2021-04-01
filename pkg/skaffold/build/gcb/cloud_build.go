@@ -94,7 +94,7 @@ func (b *Builder) buildArtifactWithCloudBuild(ctx context.Context, out io.Writer
 		return "", fmt.Errorf("checking bucket is in correct project: %w", err)
 	}
 
-	dependencies, err := b.depsResolver.DependenciesForArtifact(ctx, artifact)
+	dependencies, err := b.depsResolver.ResolveForArtifact(ctx, artifact)
 	if err != nil {
 		return "", fmt.Errorf("getting dependencies for %q: %w", artifact.ImageName, err)
 	}

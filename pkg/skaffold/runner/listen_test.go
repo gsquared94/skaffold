@@ -55,7 +55,7 @@ func (f *fakeTriggger) Debounce() bool {
 
 type fakeDepsResolver struct{}
 
-func (f *fakeDepsResolver) DependenciesForArtifact(context.Context, *latest.Artifact) ([]string, error) {
+func (f *fakeDepsResolver) ResolveForArtifact(context.Context, *latest.Artifact) ([]string, error) {
 	return nil, nil
 }
 

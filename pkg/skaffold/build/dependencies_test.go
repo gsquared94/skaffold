@@ -45,8 +45,8 @@ func TestDependenciesResolver(t *testing.T) {
 			return deps[a.ImageName], nil
 		})
 
-		r := GetDependenciesResolver(nil, nil, g)
-		d, err := r.DependenciesForArtifact(context.Background(), g["img1"])
+		r := NewTransitiveSourceDependenciesCache(nil, nil, g)
+		d, err := r.ResolveForArtifact(context.Background(), g["img1"])
 		t.CheckNoError(err)
 		expectedDeps := []string{"file11", "file12", "file21", "file22", "file31", "file32", "file41", "file42", "file41", "file42"}
 		t.CheckDeepEqual(expectedDeps, d)

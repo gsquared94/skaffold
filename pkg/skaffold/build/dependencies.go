@@ -31,29 +31,30 @@ import (
 )
 
 // for testing
-var getDependenciesFunc = dependenciesForSingleArtifact
+var getDependenciesFunc = sourceDependenciesForArtifact
 
-type DependencyResolver interface {
-	DependenciesForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error)
+// TransitiveSourceDependenciesCache provides an interface to evaluate and cache the source dependencies for artifacts.
+// This additionally includes the source dependencies from all other artifacts that are in the transitive closure of its artifact dependencies.
+type TransitiveSourceDependenciesCache interface {
+	ResolveForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error)
 	Reset()
 }
 
-func GetDependenciesResolver(cfg docker.Config, r docker.ArtifactResolver, g ArtifactGraph) DependencyResolver {
-	return &dependencyResolverImpl{cfg: cfg, r: r, g: g, cache: util.NewSyncStore()}
+func NewTransitiveSourceDependenciesCache(cfg docker.Config, r docker.ArtifactResolver, g ArtifactGraph) TransitiveSourceDependenciesCache {
+	return &dependencyResolverImpl{cfg: cfg, artifactResolver: r, artifactGraph: g, cache: util.NewSyncStore()}
 }
 
 type dependencyResolverImpl struct {
-	cfg   docker.Config
-	r     docker.ArtifactResolver
-	g     ArtifactGraph
-	cache *util.SyncStore
+	cfg              docker.Config
+	artifactResolver docker.ArtifactResolver
+	artifactGraph    ArtifactGraph
+	cache            *util.SyncStore
 }
 
-// DependenciesForArtifact returns the build dependencies for a given artifact.
-// This additionally includes the build dependencies from all other artifacts that are in the transitive closure of its artifact dependencies.
-func (r *dependencyResolverImpl) DependenciesForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error) {
+// ResolveForArtifact returns the source dependencies for the target artifact. It includes the source dependencies from all other artifacts that are in the transitive closure of its artifact dependencies.
+func (r *dependencyResolverImpl) ResolveForArtifact(ctx context.Context, a *latest.Artifact) ([]string, error) {
 	res := r.cache.Exec(a.ImageName, func() interface{} {
-		d, e := getDependenciesFunc(ctx, a, r.cfg, r.r)
+		d, e := getDependenciesFunc(ctx, a, r.cfg, r.artifactResolver)
 		if e != nil {
 			return e
 		}
@@ -65,7 +66,7 @@ func (r *dependencyResolverImpl) DependenciesForArtifact(ctx context.Context, a 
 
 	deps := res.([]string)
 	for _, ad := range a.Dependencies {
-		d, err := r.DependenciesForArtifact(ctx, r.g[ad.ImageName])
+		d, err := r.ResolveForArtifact(ctx, r.artifactGraph[ad.ImageName])
 		if err != nil {
 			return nil, err
 		}
@@ -74,12 +75,13 @@ func (r *dependencyResolverImpl) DependenciesForArtifact(ctx context.Context, a 
 	return deps, nil
 }
 
+// Reset removes the cached source dependencies for all artifacts
 func (r *dependencyResolverImpl) Reset() {
 	r.cache = util.NewSyncStore()
 }
 
-// dependenciesForSingleArtifact returns the build dependencies for the current artifact.
-func dependenciesForSingleArtifact(ctx context.Context, a *latest.Artifact, cfg docker.Config, r docker.ArtifactResolver) ([]string, error) {
+// sourceDependenciesForArtifact returns the build dependencies for the current artifact.
+func sourceDependenciesForArtifact(ctx context.Context, a *latest.Artifact, cfg docker.Config, r docker.ArtifactResolver) ([]string, error) {
 	var (
 		paths []string
 		err   error

@@ -84,7 +84,7 @@ type Builder struct {
 	skipTests     bool
 	muted         build.Muted
 	artifactStore build.ArtifactStore
-	depsResolver  build.DependencyResolver
+	depsResolver  build.TransitiveSourceDependenciesCache
 }
 
 type Config interface {
@@ -93,7 +93,7 @@ type Config interface {
 	SkipTests() bool
 	Muted() config.Muted
 	GetArtifactStore() build.ArtifactStore
-	GetDependenciesResolver() build.DependencyResolver
+	GetDependenciesResolver() build.TransitiveSourceDependenciesCache
 }
 
 // NewBuilder creates a new Builder that builds artifacts with Google Cloud Build.
