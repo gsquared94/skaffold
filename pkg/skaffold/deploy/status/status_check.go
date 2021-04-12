@@ -76,7 +76,7 @@ type Checker interface {
 	Check(context.Context, io.Writer) error
 }
 
-// statusChecker runs status checks for pods and deployments
+// statusChecker runs status checks for selected resource rollouts
 type statusChecker struct {
 	cfg             Config
 	labeller        *label.DefaultLabeller
@@ -84,7 +84,8 @@ type statusChecker struct {
 	muteLogs        bool
 }
 
-// NewStatusChecker returns a status checker which runs checks on deployments and pods.
+// NewStatusChecker returns a status checker which runs checks on selected resource rollouts.
+// Currently implemented for deployments and statefulsets.
 func NewStatusChecker(cfg Config, labeller *label.DefaultLabeller) Checker {
 	return statusChecker{
 		muteLogs:        cfg.Muted().MuteStatusCheck(),
@@ -94,7 +95,8 @@ func NewStatusChecker(cfg Config, labeller *label.DefaultLabeller) Checker {
 	}
 }
 
-// Run runs the status checks on deployments and pods deployed in current skaffold dev iteration.
+// Run runs the status checks on selected resource rollouts in current skaffold dev iteration.
+// Currently implemented for deployments and statefulsets.
 func (s statusChecker) Check(ctx context.Context, out io.Writer) error {
 	event.StatusCheckEventStarted()
 	errCode, err := s.statusCheck(ctx, out)
@@ -108,29 +110,36 @@ func (s statusChecker) statusCheck(ctx context.Context, out io.Writer) (proto.St
 		return proto.StatusCode_STATUSCHECK_KUBECTL_CLIENT_FETCH_ERR, fmt.Errorf("getting Kubernetes client: %w", err)
 	}
 
-	deployments := make([]*resource.Deployment, 0)
+	rollouts := make([]*resource.Rollout, 0)
 	for _, n := range s.cfg.GetNamespaces() {
 		newDeployments, err := getDeployments(ctx, client, n, s.labeller,
 			getDeadline(s.deadlineSeconds))
 		if err != nil {
 			return proto.StatusCode_STATUSCHECK_DEPLOYMENT_FETCH_ERR, fmt.Errorf("could not fetch deployments: %w", err)
 		}
-		deployments = append(deployments, newDeployments...)
+		rollouts = append(rollouts, newDeployments...)
+
+		newStatefulSets, err := getStatefulSets(ctx, client, n, s.labeller,
+			getDeadline(s.deadlineSeconds))
+		if err != nil {
+			return proto.StatusCode_STATUSCHECK_STATEFULSET_FETCH_ERR, fmt.Errorf("could not fetch statefulsets: %w", err)
+		}
+		rollouts = append(rollouts, newStatefulSets...)
 	}
 
 	var wg sync.WaitGroup
 
-	c := newCounter(len(deployments))
+	c := newCounter(len(rollouts))
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	for _, d := range deployments {
+	for _, d := range rollouts {
 		wg.Add(1)
-		go func(r *resource.Deployment) {
+		go func(r *resource.Rollout) {
 			defer wg.Done()
 			// keep updating the resource status until it fails/succeeds/times out
-			pollDeploymentStatus(ctx, s.cfg, r)
+			pollRolloutStatus(ctx, s.cfg, r)
 			rcCopy := c.markProcessed(r.Status().Error())
 			s.printStatusCheckSummary(out, r, rcCopy)
 			// if one deployment fails, cancel status checks for all deployments.
@@ -140,18 +149,18 @@ func (s statusChecker) statusCheck(ctx context.Context, out io.Writer) (proto.St
 		}(d)
 	}
 
-	// Retrieve pending deployments statuses
+	// Retrieve pending rollout statuses
 	go func() {
-		s.printDeploymentStatus(ctx, out, deployments)
+		s.printRolloutStatus(ctx, out, rollouts)
 	}()
 
 	// Wait for all deployment statuses to be fetched
 	wg.Wait()
 	cancel()
-	return getSkaffoldDeployStatus(c, deployments)
+	return getSkaffoldDeployStatus(c, rollouts)
 }
 
-func getDeployments(ctx context.Context, client kubernetes.Interface, ns string, l *label.DefaultLabeller, deadlineDuration time.Duration) ([]*resource.Deployment, error) {
+func getDeployments(ctx context.Context, client kubernetes.Interface, ns string, l *label.DefaultLabeller, deadlineDuration time.Duration) ([]*resource.Rollout, error) {
 	deps, err := client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{
 		LabelSelector: l.RunIDSelector(),
 	})
@@ -159,7 +168,7 @@ func getDeployments(ctx context.Context, client kubernetes.Interface, ns string,
 		return nil, fmt.Errorf("could not fetch deployments: %w", err)
 	}
 
-	deployments := make([]*resource.Deployment, len(deps.Items))
+	rollouts := make([]*resource.Rollout, len(deps.Items))
 	for i, d := range deps.Items {
 		var deadline time.Duration
 		if d.Spec.ProgressDeadlineSeconds == nil || *d.Spec.ProgressDeadlineSeconds == kubernetesMaxDeadline {
@@ -175,12 +184,37 @@ func getDeployments(ctx context.Context, client kubernetes.Interface, ns string,
 			pd = pd.WithLabel(k, v)
 		}
 
-		deployments[i] = resource.NewDeployment(d.Name, d.Namespace, deadline).WithValidator(pd)
+		rollouts[i] = resource.NewRollout(d.Name, resource.RolloutTypes.Deployment, d.Namespace, deadline).WithValidator(pd)
 	}
-	return deployments, nil
+	return rollouts, nil
 }
 
-func pollDeploymentStatus(ctx context.Context, cfg pkgkubectl.Config, r *resource.Deployment) {
+func getStatefulSets(ctx context.Context, client kubernetes.Interface, ns string, l *label.DefaultLabeller, deadlineDuration time.Duration) ([]*resource.Rollout, error) {
+	deps, err := client.AppsV1().StatefulSets(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: l.RunIDSelector(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch statefulsets: %w", err)
+	}
+
+	rollouts := make([]*resource.Rollout, len(deps.Items))
+	deadline := deadlineDuration
+
+	for i, d := range deps.Items {
+		pd := diag.New([]string{d.Namespace}).
+			WithLabel(label.RunIDLabel, l.Labels()[label.RunIDLabel]).
+			WithValidators([]validator.Validator{validator.NewPodValidator(client)})
+
+		for k, v := range d.Spec.Template.Labels {
+			pd = pd.WithLabel(k, v)
+		}
+
+		rollouts[i] = resource.NewRollout(d.Name, resource.RolloutTypes.StatefulSets, d.Namespace, deadline).WithValidator(pd)
+	}
+	return rollouts, nil
+}
+
+func pollRolloutStatus(ctx context.Context, cfg pkgkubectl.Config, r *resource.Rollout) {
 	pollDuration := time.Duration(defaultPollPeriodInMilliseconds) * time.Millisecond
 	// Add poll duration to account for one last attempt after progressDeadlineSeconds.
 	timeoutContext, cancel := context.WithTimeout(ctx, r.Deadline()+pollDuration)
@@ -220,7 +254,7 @@ func pollDeploymentStatus(ctx context.Context, cfg pkgkubectl.Config, r *resourc
 	}
 }
 
-func getSkaffoldDeployStatus(c *counter, rs []*resource.Deployment) (proto.StatusCode, error) {
+func getSkaffoldDeployStatus(c *counter, rs []*resource.Rollout) (proto.StatusCode, error) {
 	if c.failed > 0 {
 		err := fmt.Errorf("%d/%d deployment(s) failed", c.failed, c.total)
 		for _, r := range rs {
@@ -239,7 +273,7 @@ func getDeadline(d int) time.Duration {
 	return DefaultStatusCheckDeadline
 }
 
-func (s statusChecker) printStatusCheckSummary(out io.Writer, r *resource.Deployment, c counter) {
+func (s statusChecker) printStatusCheckSummary(out io.Writer, r *resource.Rollout, c counter) {
 	ae := r.Status().ActionableError()
 	if r.StatusCode() == proto.StatusCode_STATUSCHECK_USER_CANCELLED {
 		// Don't print the status summary if the user ctrl-C or
@@ -263,15 +297,15 @@ func (s statusChecker) printStatusCheckSummary(out io.Writer, r *resource.Deploy
 	fmt.Fprintln(out, status)
 }
 
-// printDeploymentStatus prints resource statuses until all status check are completed or context is cancelled.
-func (s statusChecker) printDeploymentStatus(ctx context.Context, out io.Writer, deployments []*resource.Deployment) {
+// printRolloutStatus prints resource statuses until all status check are completed or context is cancelled.
+func (s statusChecker) printRolloutStatus(ctx context.Context, out io.Writer, rollouts []*resource.Rollout) {
 	for {
 		var allDone bool
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(reportStatusTime):
-			allDone = s.printStatus(deployments, out)
+			allDone = s.printStatus(rollouts, out)
 		}
 		if allDone {
 			return
@@ -279,9 +313,9 @@ func (s statusChecker) printDeploymentStatus(ctx context.Context, out io.Writer,
 	}
 }
 
-func (s statusChecker) printStatus(deployments []*resource.Deployment, out io.Writer) bool {
+func (s statusChecker) printStatus(rollouts []*resource.Rollout, out io.Writer) bool {
 	allDone := true
-	for _, r := range deployments {
+	for _, r := range rollouts {
 		if r.IsStatusCheckCompleteOrCancelled() {
 			continue
 		}
