@@ -105,6 +105,10 @@ func (t FullTester) Test(ctx context.Context, out io.Writer, bRes []graph.Artifa
 	return t.runTests(ctx, out, bRes)
 }
 
+func (t FullTester) GetTesters(a *latest.Artifact) []ImageTester {
+	return t.Testers[a.ImageName]
+}
+
 func (t FullTester) runTests(ctx context.Context, out io.Writer, bRes []graph.Artifact) error {
 	for _, b := range bRes {
 		for _, tester := range t.Testers[b.ImageName] {

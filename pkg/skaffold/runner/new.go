@@ -90,13 +90,15 @@ func NewForConfig(runCtx *runcontext.RunContext) (*SkaffoldRunner, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		testDependencies, err := tester.TestDependencies()
-		if err != nil {
-			return nil, err
+		testers := tester.GetTesters(artifact)
+		for _, t := range testers {
+			testDependencies, err := t.TestDependencies()
+			if err != nil {
+				return nil, err
+			}
+			buildDependencies = append(buildDependencies, testDependencies...)
 		}
-
-		return append(buildDependencies, testDependencies...), nil
+		return buildDependencies, nil
 	}
 
 	artifactCache, err := cache.NewCache(runCtx, isLocalImage, depLister, g, store)
