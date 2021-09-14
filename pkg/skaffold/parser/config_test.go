@@ -66,7 +66,7 @@ func createCfg(name string, imageName string, workspace string, requires []lates
 			Artifacts: []*latestV1.Artifact{{ImageName: imageName, ArtifactType: latestV1.ArtifactType{
 				DockerArtifact: &latestV1.DockerArtifact{DockerfilePath: "Dockerfile"}}, Workspace: workspace}}, TagPolicy: latestV1.TagPolicy{
 				GitTagger: &latestV1.GitTagger{}}, BuildType: latestV1.BuildType{
-				LocalBuild: &latestV1.LocalBuild{Concurrency: concurrency()},
+				LocalBuild: &latestV1.LocalBuild{Concurrency: concurrency(), UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(true)},
 			}}, Deploy: latestV1.DeployConfig{Logs: latestV1.LogsConfig{Prefix: "container"}}},
 	}
 }

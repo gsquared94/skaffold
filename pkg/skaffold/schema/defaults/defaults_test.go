@@ -309,17 +309,86 @@ func TestSetDefaultsOnCloudBuild(t *testing.T) {
 }
 
 func TestSetDefaultsOnLocalBuild(t *testing.T) {
-	cfg1 := &latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{}}}
-	cfg2 := &latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{Artifacts: []*latestV1.Artifact{{ImageName: "foo"}}}}}
-
-	err := Set(cfg1)
-	testutil.CheckError(t, false, err)
-	SetDefaultDeployer(cfg1)
-	testutil.CheckDeepEqual(t, latestV1.LocalBuild{}, *cfg1.Build.LocalBuild)
-	err = Set(cfg2)
-	testutil.CheckError(t, false, err)
-	SetDefaultDeployer(cfg2)
-	testutil.CheckDeepEqual(t, 1, *cfg2.Build.LocalBuild.Concurrency)
+	tests := []struct {
+		description string
+		cfg         latestV1.SkaffoldConfig
+		expected    latestV1.LocalBuild
+	}{
+		{
+			description: "no artifacts",
+			cfg:         latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{}}},
+			expected:    latestV1.LocalBuild{},
+		},
+		{
+			description: "single artifact",
+			cfg:         latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{Artifacts: []*latestV1.Artifact{{ImageName: "foo"}}}}},
+			expected:    latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(true), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useBuildkit set to true, useDockerCLI unspecified",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseBuildkit: util.BoolPtr(true)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(true), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useBuildkit set to false, useDockerCLI unspecified",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseBuildkit: util.BoolPtr(false)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(false), UseBuildkit: util.BoolPtr(false), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useDockerCLI set to true, useBuildkit unspecified",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(true), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useDockerCLI set to false, useBuildkit unspecified",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(false)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(false), UseBuildkit: util.BoolPtr(false), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useDockerCLI set to true, useBuildkit set to true",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(true)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(true), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useDockerCLI set to false, useBuildkit set to false",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(false), UseBuildkit: util.BoolPtr(false)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(false), UseBuildkit: util.BoolPtr(false), Concurrency: util.IntPtr(1)},
+		},
+		{
+			description: "useDockerCLI set to true, useBuildkit set to false",
+			cfg: latestV1.SkaffoldConfig{Pipeline: latestV1.Pipeline{Build: latestV1.BuildConfig{
+				Artifacts: []*latestV1.Artifact{{ImageName: "foo"}},
+				BuildType: latestV1.BuildType{LocalBuild: &latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(false)}}},
+			}},
+			expected: latestV1.LocalBuild{UseDockerCLI: util.BoolPtr(true), UseBuildkit: util.BoolPtr(false), Concurrency: util.IntPtr(1)},
+		},
+	}
+	for _, test := range tests {
+		testutil.Run(t, test.description, func(t *testutil.T) {
+			err := Set(&test.cfg)
+			t.CheckNoError(err)
+			SetDefaultDeployer(&test.cfg)
+			t.CheckDeepEqual(test.expected, *test.cfg.Build.LocalBuild)
+		})
+	}
 }
 
 func TestSetPortForwardLocalPort(t *testing.T) {

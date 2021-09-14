@@ -449,6 +449,8 @@ enum StatusCode {
     CONFIG_MISSING_MANIFEST_FILE_ERR = 1216;
     // Remote config repository cache not found and sync disabled
     CONFIG_REMOTE_REPO_CACHE_NOT_FOUND_ERR = 1217;
+    // Incompatible value for `useBuildkit` and `useDockerCLI` build config fields
+    CONFIG_USEBUILDKIT_USEDOCKERCLI_VALUES_INCOMPATIBLE = 1218;
 
     // Inspect command errors
 
@@ -607,6 +609,8 @@ enum SuggestionCode {
     CONFIG_FIX_MISSING_MANIFEST_FILE = 710;
     // Enable remote repo sync, or clone manually
     CONFIG_ENABLE_REMOTE_REPO_SYNC = 711;
+    // Fix `useBuildkit` and `useDockerCLI` build config values
+    CONFIG_FIX_USEBUILDKIT_AND_USEDOCKERCLI_VALUES = 712;
 
     // `skaffold inspect` command error suggestion codes
 

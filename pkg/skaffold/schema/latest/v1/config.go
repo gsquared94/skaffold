@@ -278,10 +278,10 @@ type LocalBuild struct {
 	TryImportMissing bool `yaml:"tryImportMissing,omitempty"`
 
 	// UseDockerCLI use `docker` command-line interface instead of Docker Engine APIs.
-	UseDockerCLI bool `yaml:"useDockerCLI,omitempty"`
+	UseDockerCLI *bool `yaml:"useDockerCLI,omitempty"`
 
 	// UseBuildkit use BuildKit to build Docker images.
-	UseBuildkit bool `yaml:"useBuildkit,omitempty"`
+	UseBuildkit *bool `yaml:"useBuildkit,omitempty"`
 
 	// Concurrency is how many artifacts can be built concurrently. 0 means "no-limit".
 	// Defaults to `1`.

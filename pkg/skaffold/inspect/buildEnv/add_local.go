@@ -82,11 +82,7 @@ func constructLocalDefinition(existing *latestV1.LocalBuild, opts inspect.BuildE
 	if opts.TryImportMissing != nil {
 		b.TryImportMissing = *opts.TryImportMissing
 	}
-	if opts.UseDockerCLI != nil {
-		b.UseDockerCLI = *opts.UseDockerCLI
-	}
-	if opts.UseBuildkit != nil {
-		b.UseBuildkit = *opts.UseBuildkit
-	}
+	b.UseDockerCLI = opts.UseDockerCLI
+	b.UseBuildkit = opts.UseBuildkit
 	return &b
 }

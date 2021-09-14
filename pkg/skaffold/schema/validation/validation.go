@@ -69,6 +69,7 @@ func Process(configs parser.SkaffoldConfigSet, validateConfig Options) error {
 		var cfgErrs []error
 		cfgErrs = append(cfgErrs, visitStructs(config.SkaffoldConfig, validateYamltags)...)
 		cfgErrs = append(cfgErrs, validateDockerNetworkMode(config.Build.Artifacts)...)
+		cfgErrs = append(cfgErrs, validateBuildLocalOptions(config.Build.LocalBuild)...)
 		cfgErrs = append(cfgErrs, validateCustomDependencies(config.Build.Artifacts)...)
 		cfgErrs = append(cfgErrs, validateSyncRules(config.Build.Artifacts)...)
 		cfgErrs = append(cfgErrs, validatePortForwardResources(config.PortForward)...)
@@ -307,6 +308,32 @@ func validateDockerContainerExpression(image string, id string) error {
 			})
 	}
 	return nil
+}
+
+// validateBuildLocalOptions makes sure that the local build env options are compatible
+func validateBuildLocalOptions(lb *latestV1.LocalBuild) (errs []error) {
+	if lb == nil {
+		return
+	}
+	if lb.UseBuildkit == nil || lb.UseDockerCLI == nil {
+		return
+	}
+
+	if *lb.UseBuildkit && !*lb.UseDockerCLI {
+		message := "local build config field `useDockerCLI` cannot be false when field `useBuildkit` is set to true"
+		errs = append(errs, sErrors.NewError(errors.New(message),
+			proto.ActionableErr{
+				Message: message,
+				ErrCode: proto.StatusCode_CONFIG_USEBUILDKIT_USEDOCKERCLI_VALUES_INCOMPATIBLE,
+				Suggestions: []*proto.Suggestion{
+					{
+						SuggestionCode: proto.SuggestionCode_CONFIG_FIX_USEBUILDKIT_AND_USEDOCKERCLI_VALUES,
+						Action:         "Either set local build config field `useBuildkit` to empty or false, or set field `useDockerCLI` to empty or true",
+					},
+				},
+			}))
+	}
+	return
 }
 
 // validateDockerNetworkMode makes sure that networkMode is one of `bridge`, `none`, `container:<name|id>`, or `host` if set.

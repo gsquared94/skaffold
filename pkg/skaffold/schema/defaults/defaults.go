@@ -80,6 +80,7 @@ func Set(c *latestV1.SkaffoldConfig) error {
 		// don't set build concurrency if there are no artifacts in the current config
 		if len(c.Build.Artifacts) > 0 {
 			setDefaultConcurrency(lb)
+			setBuildkitDefaults(lb)
 		}
 	})
 
@@ -142,6 +143,39 @@ func withLocalBuild(c *latestV1.SkaffoldConfig, operations ...func(*latestV1.Loc
 			operation(local)
 		}
 	}
+}
+
+func setBuildkitDefaults(local *latestV1.LocalBuild) {
+	if local == nil {
+		return
+	}
+	var useBuildkit, useDockerCLI bool
+	switch {
+	case local.UseBuildkit == nil && local.UseDockerCLI == nil:
+		// if both are unspecified, use buildkit by default. This also requires using docker CLI.
+		useBuildkit = true
+		useDockerCLI = true
+	case local.UseBuildkit != nil && local.UseDockerCLI == nil:
+		// if buildkit setting is specified, and docker CLI is unspecified, then:
+		// - enable docker CLI if buildkit is enabled, since it's required for buildkit.
+		// - disable docker CLI if buildkit is disabled.
+		useBuildkit = *local.UseBuildkit
+		useDockerCLI = useBuildkit
+	case local.UseBuildkit == nil && local.UseDockerCLI != nil:
+		// if docker CLI is specified and buildkit is unspecified, then:
+		// - enable buildkit if docker CLI is enabled
+		// - disable buildkit if docker CLI is disabled, since it's required for buildkit.
+		useDockerCLI = *local.UseDockerCLI
+		useBuildkit = useDockerCLI
+	default:
+		// if both are specified, leave unchanged.
+		// there's config validation to ensure that the values are compatible.
+		useBuildkit = *local.UseBuildkit
+		useDockerCLI = *local.UseDockerCLI
+	}
+
+	local.UseBuildkit = &useBuildkit
+	local.UseDockerCLI = &useDockerCLI
 }
 
 func setDefaultConcurrency(local *latestV1.LocalBuild) {

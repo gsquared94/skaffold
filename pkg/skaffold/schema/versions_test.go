@@ -495,6 +495,8 @@ func withLocalBuild(ops ...func(*latestV1.BuildConfig)) func(*latestV1.SkaffoldC
 		}
 		if len(b.Artifacts) > 0 {
 			b.LocalBuild.Concurrency = &constants.DefaultLocalConcurrency
+			b.LocalBuild.UseBuildkit = boolPtr(true)
+			b.LocalBuild.UseDockerCLI = boolPtr(true)
 		}
 		cfg.Build = b
 	}
@@ -833,4 +835,9 @@ func TestIsCompatibleWith(t *testing.T) {
 			t.CheckError(test.shouldErr, err)
 		})
 	}
+}
+
+func boolPtr(b bool) *bool {
+	o := b
+	return &o
 }

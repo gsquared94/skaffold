@@ -54,6 +54,7 @@ metadata:
 build:
   local:
     push: true
+    useDockerCLI: false
     concurrency: 2
 profiles:
 - name: p1
@@ -69,6 +70,7 @@ requires:
 build:
   local:
     push: true
+    useDockerCLI: false
     concurrency: 2
 profiles:
 - name: p1
@@ -92,6 +94,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 ---
 apiVersion: ""
@@ -107,6 +110,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `, `apiVersion: ""
 kind: ""
@@ -119,6 +123,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `,
 			},
@@ -141,6 +146,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 ---
 apiVersion: ""
@@ -159,6 +165,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `, `apiVersion: ""
 kind: ""
@@ -174,6 +181,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `,
 			},
@@ -210,6 +218,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `, `apiVersion: ""
 kind: ""
@@ -225,6 +234,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `, "",
 			},
@@ -248,6 +258,7 @@ profiles:
   build:
     local:
       push: true
+      useDockerCLI: false
       concurrency: 2
 `,
 			},
