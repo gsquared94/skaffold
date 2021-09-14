@@ -241,6 +241,7 @@ func TestLocalRun(t *testing.T) {
 			builder, err := NewBuilder(context.Background(), &mockBuilderContext{artifactStore: build.NewArtifactStore()}, &latestV1.LocalBuild{
 				Push:        util.BoolPtr(test.pushImages),
 				Concurrency: &constants.DefaultLocalConcurrency,
+				UseBuildkit: util.BoolPtr(false),
 			})
 			t.CheckNoError(err)
 			ab := builder.Build(context.Background(), ioutil.Discard, test.artifact)
@@ -405,7 +406,7 @@ func TestGetArtifactBuilder(t *testing.T) {
 				return args, nil
 			})
 
-			b, err := NewBuilder(context.Background(), &mockBuilderContext{artifactStore: build.NewArtifactStore()}, &latestV1.LocalBuild{Concurrency: &constants.DefaultLocalConcurrency})
+			b, err := NewBuilder(context.Background(), &mockBuilderContext{artifactStore: build.NewArtifactStore()}, &latestV1.LocalBuild{Concurrency: &constants.DefaultLocalConcurrency, UseBuildkit: util.BoolPtr(false)})
 			t.CheckNoError(err)
 
 			builder, err := newPerArtifactBuilder(b, test.artifact)

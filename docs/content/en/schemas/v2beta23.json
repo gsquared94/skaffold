@@ -2735,8 +2735,7 @@
         "useBuildkit": {
           "type": "boolean",
           "description": "use BuildKit to build Docker images.",
-          "x-intellij-html-description": "use BuildKit to build Docker images.",
-          "default": "false"
+          "x-intellij-html-description": "use BuildKit to build Docker images."
         },
         "useDockerCLI": {
           "type": "boolean",

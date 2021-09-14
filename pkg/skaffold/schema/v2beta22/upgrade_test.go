@@ -177,6 +177,7 @@ profiles:
           dockerfile: path/to/Dockerfile
       local:
         push: false
+        useBuildkit: false
     deploy:
       kubectl:
         manifests:
