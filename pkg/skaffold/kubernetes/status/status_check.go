@@ -329,7 +329,7 @@ func getStatefulSets(ctx context.Context, client kubernetes.Interface, ns string
 	for i, ss := range sets.Items {
 		pd := diag.New([]string{ss.Namespace}).
 			WithLabel(label.RunIDLabel, l.Labels()[label.RunIDLabel]).
-			WithValidators([]validator.Validator{validator.NewPodValidator(client, validator.NewStatefulSetPodsSelector(client, ss))})
+			WithValidators([]validator.Validator{validator.NewPodValidator(client, validator.NewStatefulSetPodsSelector(client, ss.Name))})
 
 		for k, v := range ss.Spec.Template.Labels {
 			pd = pd.WithLabel(k, v)

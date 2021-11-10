@@ -19,29 +19,32 @@ package validator
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type statefulSetPodsSelector struct {
-	k      kubernetes.Interface
-	setObj appsv1.StatefulSet
+	k    kubernetes.Interface
+	name string
 }
 
-func NewStatefulSetPodsSelector(k kubernetes.Interface, d appsv1.StatefulSet) PodSelector {
-	return &statefulSetPodsSelector{k, d}
+func NewStatefulSetPodsSelector(k kubernetes.Interface, name string) PodSelector {
+	return &statefulSetPodsSelector{k, name}
 }
 
 func (s *statefulSetPodsSelector) Select(ctx context.Context, ns string, opts metav1.ListOptions) ([]v1.Pod, error) {
+	ss, err := s.k.AppsV1().StatefulSets(ns).Get(ctx, s.name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
 	pods, err := s.k.CoreV1().Pods(ns).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 	var filtered []v1.Pod
 	for _, po := range pods.Items {
-		if isPodOwnedBy(po, &s.setObj) {
+		if isPodOwnedBy(po, ss) {
 			filtered = append(filtered, po)
 		}
 	}
