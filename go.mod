@@ -38,7 +38,7 @@ require (
 	github.com/buildpacks/lifecycle v0.10.2
 	github.com/buildpacks/pack v0.18.1
 	github.com/cenkalti/backoff/v4 v4.1.1
-	github.com/docker/cli v20.10.10+incompatible
+	github.com/docker/cli v20.10.11+incompatible
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/docker/go-connections v0.4.0
