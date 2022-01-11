@@ -82,16 +82,16 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tektoncd/pipeline v0.5.1-0.20190731183258-9d7e37e85bf8
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.lsp.dev/protocol v0.11.2
 	go.lsp.dev/jsonrpc2 v0.9.0
+	go.lsp.dev/protocol v0.11.2
 	go.lsp.dev/uri v0.3.0
-	go.opentelemetry.io/otel v0.20.0
+	go.opentelemetry.io/otel v1.3.0
 	go.opentelemetry.io/otel/exporters/stdout v0.20.0
 	go.opentelemetry.io/otel/exporters/trace/jaeger v0.20.0
-	go.opentelemetry.io/otel/metric v0.20.0
+	go.opentelemetry.io/otel/metric v0.26.0
 	go.opentelemetry.io/otel/sdk v0.20.0
 	go.opentelemetry.io/otel/sdk/metric v0.20.0
-	go.opentelemetry.io/otel/trace v0.20.0
+	go.opentelemetry.io/otel/trace v1.3.0
 	golang.org/x/mod v0.4.2
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
