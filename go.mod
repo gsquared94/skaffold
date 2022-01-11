@@ -82,8 +82,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tektoncd/pipeline v0.5.1-0.20190731183258-9d7e37e85bf8
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.lsp.dev/protocol v0.11.2
 	go.lsp.dev/jsonrpc2 v0.9.0
+	go.lsp.dev/protocol v0.11.2
 	go.lsp.dev/uri v0.3.0
 	go.opentelemetry.io/otel v0.20.0
 	go.opentelemetry.io/otel/exporters/stdout v0.20.0
@@ -111,6 +111,6 @@ require (
 	k8s.io/utils v0.0.0-20210517184530-5a248b5acedc
 	knative.dev/pkg v0.0.0-20201119170152-e5e30edc364a // indirect
 	sigs.k8s.io/cli-utils v0.22.0
-	sigs.k8s.io/kustomize/kyaml v0.10.17
+	sigs.k8s.io/kustomize/kyaml v0.13.1
 	sigs.k8s.io/yaml v1.2.0
 )
