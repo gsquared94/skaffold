@@ -25,6 +25,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/graph"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/hooks"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/output/log"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/platform"
 	latestV1 "github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest/v1"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/tag"
 )
@@ -85,7 +86,7 @@ func NewBuilderMux(cfg Config, store ArtifactStore, builder func(p latestV1.Pipe
 }
 
 // Build executes the specific image builder for each artifact in the given artifact slice.
-func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, artifacts []*latestV1.Artifact) ([]graph.Artifact, error) {
+func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTags, resolver platform.Resolver, artifacts []*latestV1.Artifact) ([]graph.Artifact, error) {
 	m := make(map[PipelineBuilder]bool)
 	for _, a := range artifacts {
 		m[b.byImageName[a.ImageName]] = true
@@ -97,8 +98,13 @@ func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTag
 		}
 	}
 
-	builder := func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string) (string, error) {
+	builder := func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
 		p := b.byImageName[artifact.ImageName]
+		if pl, err := filterBuildEnvSupportedPlatforms(p.SupportedPlatforms(), platforms); err != nil {
+			return "", err
+		} else {
+			platforms = pl
+		}
 		artifactBuilder := p.Build(ctx, out, artifact)
 		hooksOpts, err := hooks.NewBuildEnvOpts(artifact, tag, p.PushImages())
 		if err != nil {
@@ -109,7 +115,7 @@ func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTag
 		if err = r.RunPreHooks(ctx, out); err != nil {
 			return "", err
 		}
-		if built, err = artifactBuilder(ctx, out, artifact, tag); err != nil {
+		if built, err = artifactBuilder(ctx, out, artifact, tag, platforms); err != nil {
 			return "", err
 		}
 		if err = r.RunPostHooks(ctx, out); err != nil {
@@ -117,7 +123,7 @@ func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTag
 		}
 		return built, nil
 	}
-	ar, err := InOrder(ctx, out, tags, artifacts, builder, b.concurrency, b.store)
+	ar, err := InOrder(ctx, out, tags, resolver, artifacts, builder, b.concurrency, b.store)
 	if err != nil {
 		return nil, err
 	}
@@ -139,4 +145,16 @@ func (b *BuilderMux) Prune(ctx context.Context, writer io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// filterBuildEnvSupportedPlatforms filters the target platforms to those supported by the selected build environment (local/googleCloudBuild/cluster).
+func filterBuildEnvSupportedPlatforms(supported platform.Platforms, target platform.Platforms) (platform.Platforms, error) {
+	if len(target) == 0 {
+		return target, nil
+	}
+	pl := target.Intersect(supported)
+	if len(pl) == 0 {
+		return nil, fmt.Errorf("target build platforms %q not supported by current build environment. Supported platforms: %q", target, supported)
+	}
+	return pl, nil
 }
