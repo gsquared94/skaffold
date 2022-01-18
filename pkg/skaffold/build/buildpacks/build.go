@@ -29,13 +29,13 @@ import (
 
 // Build builds an artifact with Cloud Native Buildpacks:
 // https://buildpacks.io/
-func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
-	if len(platforms) > 1 {
+func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, matcher platform.Matcher) (string, error) {
+	if matcher.IsMultiPlatform() {
 		// TODO: Implement building multiplatform images
 		log.Entry(ctx).Println("skaffold doesn't yet support multi platform builds for the buildpacks builder")
 	}
 
-	built, err := b.build(ctx, out, artifact, tag, platforms)
+	built, err := b.build(ctx, out, artifact, tag, matcher)
 	if err != nil {
 		return "", err
 	}
@@ -50,6 +50,6 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.A
 	return b.localDocker.ImageID(ctx, tag)
 }
 
-func (b *Builder) SupportedPlatforms() platform.Platforms {
-	return platform.Platforms{platform.Platform{Platform: v1.Platform{OS: "linux", Architecture: "amd64"}}}
+func (b *Builder) SupportedPlatforms() platform.Matcher {
+	return platform.Matcher{Platforms: []v1.Platform{{OS: "linux", Architecture: "amd64"}}}
 }

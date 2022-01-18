@@ -26,7 +26,7 @@ import (
 )
 
 // Build builds an artifact with Jib.
-func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 	instrumentation.AddAttributesToCurrentSpanFromContext(ctx, map[string]string{
 		"BuildType":   "jib",
 		"Context":     instrumentation.PII(artifact.Workspace),
@@ -56,4 +56,4 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.A
 	}
 }
 
-func (b *Builder) SupportedPlatforms() platform.Platforms { return platform.All }
+func (b *Builder) SupportedPlatforms() platform.Matcher { return platform.All }

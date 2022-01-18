@@ -140,8 +140,8 @@ func (b *Builder) Prune(ctx context.Context, _ io.Writer) error {
 
 // artifactBuilder represents a per artifact builder interface
 type artifactBuilder interface {
-	Build(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error)
-	SupportedPlatforms() platform.Platforms
+	Build(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error)
+	SupportedPlatforms() platform.Matcher
 }
 
 // newPerArtifactBuilder returns an instance of `artifactBuilder`

@@ -62,13 +62,13 @@ func (b *Builder) PostBuild(_ context.Context, _ io.Writer) error {
 	return nil
 }
 
-func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, m platform.Matcher) (string, error) {
 	// TODO: Implement building multiplatform images for cluster builder
-	if len(platforms) > 1 {
+	if m.IsMultiPlatform() {
 		log.Entry(ctx).Println("skaffold doesn't yet support multi platform builds for the cluster builder")
 	}
 
-	digest, err := b.runBuildForArtifact(ctx, out, artifact, tag, platforms)
+	digest, err := b.runBuildForArtifact(ctx, out, artifact, tag, m)
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +80,7 @@ func (b *Builder) Concurrency() int {
 	return b.ClusterDetails.Concurrency
 }
 
-func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 	// required artifacts as build-args
 	requiredImages := docker.ResolveDependencyImages(a.Dependencies, b.artifactStore, true)
 	switch {

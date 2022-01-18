@@ -17,54 +17,80 @@ limitations under the License.
 package platform
 
 import (
+	"context"
+	"strings"
+
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/output/log"
 	"github.com/containerd/containerd/platforms"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 var (
-	All = Platforms{{all: true}}
+	All  = Matcher{All: true}
+	Host = Matcher{Platforms: []specs.Platform{platforms.DefaultSpec()}}
 )
 
-// Platform describes the platform which the image runs on.
-type Platform struct {
-	all bool
-	specs.Platform
+// Matcher describes a collection of target image build platforms
+type Matcher struct {
+	All       bool
+	Platforms []specs.Platform
 }
 
-// Platforms describes a collection of `Platform` structs
-type Platforms []Platform
-
-func Parse(platform string) (Platform, error) {
-	p, err := platforms.Parse(platform)
-	return Platform{Platform: p}, err
+func (m Matcher) IsEmpty() bool {
+	return !m.All && len(m.Platforms) == 0
 }
 
-func (p Platform) String() string {
-	return platforms.Format(p.Platform)
+func (m Matcher) IsNotEmpty() bool {
+	return !m.IsEmpty()
 }
 
-// Intersect returns the intersection set of Platforms
-func (ps Platforms) Intersect(other Platforms) Platforms {
-	if len(ps) == 0 {
+func (m Matcher) IsMultiPlatform() bool {
+	return m.All || len(m.Platforms) > 1
+}
+
+func (p Matcher) String() string {
+	if p.All {
+		return "all"
+	}
+	var pl []string
+	for _, p := range p.Platforms {
+		pl = append(pl, Format(p))
+	}
+	return strings.Join(pl, ",")
+}
+
+// Intersect returns the intersection set of Matchers.
+func (m Matcher) Intersect(other Matcher) Matcher {
+	if m.All {
 		return other
 	}
-	if len(other) == 0 {
-		return ps
+	if other.All {
+		return m
 	}
-	var result Platforms
-	for i := 0; i < len(ps); i++ {
-		if ps[i].all {
-			return other
-		}
-		matcher := platforms.OnlyStrict(ps[i].Platform)
-		for j := i; j < len(other); j++ {
-			if other[j].all {
-				return ps
-			}
-			if matcher.Match(other[j].Platform) {
-				result = append(result, ps[i])
+	var pl []specs.Platform
+	for i := 0; i < len(m.Platforms); i++ {
+		matcher := platforms.OnlyStrict(m.Platforms[i])
+		for j := 0; j < len(other.Platforms); j++ {
+			if matcher.Match(other.Platforms[j]) {
+				pl = append(pl, m.Platforms[i])
 			}
 		}
 	}
-	return result
+	res := Matcher{Platforms: pl}
+	log.Entry(context.TODO()).Debugf("intersect matchers %q and %q, result %q", m, other, res)
+	return res
 }
+
+func Parse(ps []string) (Matcher, error) {
+	var sl []specs.Platform
+	for _, p := range ps {
+		platform, err := platforms.Parse(p)
+		if err != nil {
+			return Matcher{}, UnknownPlatformCLIFlag(p, err)
+		}
+		sl = append(sl, platform)
+	}
+	return Matcher{Platforms: sl}, nil
+}
+
+func Format(pl specs.Platform) string { return platforms.Format(pl) }

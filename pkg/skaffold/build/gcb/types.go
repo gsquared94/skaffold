@@ -123,6 +123,6 @@ func (b *Builder) PushImages() bool {
 	return true
 }
 
-func (b *Builder) SupportedPlatforms() platform.Platforms {
-	return platform.Platforms{platform.Platform{Platform: v1.Platform{OS: "linux", Architecture: "amd64"}}}
+func (b *Builder) SupportedPlatforms() platform.Matcher {
+	return platform.Matcher{Platforms: []v1.Platform{{OS: "linux", Architecture: "amd64"}}}
 }

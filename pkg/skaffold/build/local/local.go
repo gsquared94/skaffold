@@ -18,6 +18,7 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
@@ -68,9 +69,9 @@ func (b *Builder) PushImages() bool {
 	return b.pushImages
 }
 
-func (b *Builder) SupportedPlatforms() platform.Platforms { return platform.All }
+func (b *Builder) SupportedPlatforms() platform.Matcher { return platform.All }
 
-func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 	digestOrImageID, err := b.runBuildForArtifact(ctx, out, a, tag, platforms)
 	if err != nil {
 		return "", err
@@ -98,7 +99,7 @@ func (b *Builder) buildArtifact(ctx context.Context, out io.Writer, a *latestV1.
 	return build.TagWithImageID(ctx, tag, imageID, b.localDocker)
 }
 
-func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 	if !b.pushImages {
 		// All of the builders will rely on a local Docker:
 		// + Either to build the image,
@@ -112,6 +113,14 @@ func (b *Builder) runBuildForArtifact(ctx context.Context, out io.Writer, a *lat
 	builder, err := newPerArtifactBuilder(b, a)
 	if err != nil {
 		return "", err
+	}
+	if platforms.IsNotEmpty() {
+		supported := builder.SupportedPlatforms()
+		if p := platforms.Intersect(supported); p.IsNotEmpty() {
+			platforms = p
+		} else {
+			return "", fmt.Errorf("builder for artifact %q doesn't support building for target platforms: %q. Supported platforms are %q", a.ImageName, platforms, supported)
+		}
 	}
 	return builder.Build(ctx, out, a, tag, platforms)
 }

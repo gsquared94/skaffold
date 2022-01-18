@@ -98,7 +98,7 @@ func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTag
 		}
 	}
 
-	builder := func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+	builder := func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 		p := b.byImageName[artifact.ImageName]
 		if pl, err := filterBuildEnvSupportedPlatforms(p.SupportedPlatforms(), platforms); err != nil {
 			return "", err
@@ -148,13 +148,13 @@ func (b *BuilderMux) Prune(ctx context.Context, writer io.Writer) error {
 }
 
 // filterBuildEnvSupportedPlatforms filters the target platforms to those supported by the selected build environment (local/googleCloudBuild/cluster).
-func filterBuildEnvSupportedPlatforms(supported platform.Platforms, target platform.Platforms) (platform.Platforms, error) {
-	if len(target) == 0 {
+func filterBuildEnvSupportedPlatforms(supported platform.Matcher, target platform.Matcher) (platform.Matcher, error) {
+	if target.IsEmpty() {
 		return target, nil
 	}
-	pl := target.Intersect(supported)
-	if len(pl) == 0 {
-		return nil, fmt.Errorf("target build platforms %q not supported by current build environment. Supported platforms: %q", target, supported)
+	if pl := target.Intersect(supported); pl.IsEmpty() {
+		return platform.Matcher{}, fmt.Errorf("target build platforms %q not supported by current build environment. Supported platforms: %q", target, supported)
+	} else {
+		return pl, nil
 	}
-	return pl, nil
 }

@@ -82,6 +82,6 @@ func (b *Builder) Prune(ctx context.Context, out io.Writer) error {
 
 func (b *Builder) PushImages() bool { return true }
 
-func (b *Builder) SupportedPlatforms() platform.Platforms {
+func (b *Builder) SupportedPlatforms() platform.Matcher {
 	return platform.All
 }

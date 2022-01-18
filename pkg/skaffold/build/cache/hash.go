@@ -93,7 +93,7 @@ func (h *artifactHasherImpl) hash(ctx context.Context, a *latestV1.Artifact, pla
 	return encode(hashes)
 }
 
-func (h *artifactHasherImpl) safeHash(ctx context.Context, a *latestV1.Artifact, platforms platform.Platforms) (string, error) {
+func (h *artifactHasherImpl) safeHash(ctx context.Context, a *latestV1.Artifact, platforms platform.Matcher) (string, error) {
 	val := h.syncStore.Exec(a.ImageName,
 		func() interface{} {
 			hash, err := singleArtifactHash(ctx, h.lister, a, h.mode, platforms)
@@ -113,7 +113,7 @@ func (h *artifactHasherImpl) safeHash(ctx context.Context, a *latestV1.Artifact,
 }
 
 // singleArtifactHash calculates the hash for a single artifact, and ignores its required artifacts.
-func singleArtifactHash(ctx context.Context, depLister DependencyLister, a *latestV1.Artifact, mode config.RunMode, platforms platform.Platforms) (string, error) {
+func singleArtifactHash(ctx context.Context, depLister DependencyLister, a *latestV1.Artifact, mode config.RunMode, m platform.Matcher) (string, error) {
 	var inputs []string
 
 	// Append the artifact's configuration
@@ -154,8 +154,8 @@ func singleArtifactHash(ctx context.Context, depLister DependencyLister, a *late
 
 	// add build platforms
 	var ps []string
-	for _, p := range platforms {
-		ps = append(ps, p.String())
+	for _, p := range m.Platforms {
+		ps = append(ps, platform.Format(p))
 	}
 	sort.Strings(ps)
 	inputs = append(inputs, ps...)

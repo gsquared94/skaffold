@@ -37,7 +37,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/tag"
 )
 
-type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error)
+type ArtifactBuilder func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error)
 
 type scheduler struct {
 	artifacts       []*latestV1.Artifact
@@ -163,6 +163,9 @@ func performBuild(ctx context.Context, cw io.Writer, tags tag.ImageTags, platfor
 		return "", fmt.Errorf("unable to find tag for image %s", artifact.ImageName)
 	}
 	pl := platforms.GetPlatforms(artifact.ImageName)
+	if pl.IsNotEmpty() {
+		output.Default.Fprintf(cw, "Target platforms: [%s]\n", pl)
+	}
 	tag = docker.SanitizeImageName(tag)
 	return build(ctx, cw, artifact, tag, pl)
 }

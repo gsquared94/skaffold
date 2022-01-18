@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/containerd/containerd/platforms"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	coreV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -31,20 +30,23 @@ import (
 )
 
 type Resolver struct {
-	platformsByImageName map[string]Platforms
+	platformsByImageName map[string]Matcher
 }
 
-func (r Resolver) GetPlatforms(imageName string) Platforms {
+func (r Resolver) GetPlatforms(imageName string) Matcher {
+	if r.platformsByImageName == nil {
+		return Matcher{}
+	}
 	return r.platformsByImageName[imageName]
 }
 
 func NewResolver(ctx context.Context, pipelines []latestV1.Pipeline, cliPlatformsSelection []string, runMode config.RunMode, kubeContext string) (Resolver, error) {
 	r := Resolver{}
-	r.platformsByImageName = make(map[string]Platforms)
+	r.platformsByImageName = make(map[string]Matcher)
 
-	var fromCli, fromClusterNodes Platforms
+	var fromCli, fromClusterNodes Matcher
 	var err error
-	fromCli, err = ParsePlatforms(cliPlatformsSelection)
+	fromCli, err = Parse(cliPlatformsSelection)
 	if err != nil {
 		return r, fmt.Errorf("failed to parse platforms: %w", err)
 	}
@@ -53,7 +55,7 @@ func NewResolver(ctx context.Context, pipelines []latestV1.Pipeline, cliPlatform
 	if runMode == config.RunModes.Dev || runMode == config.RunModes.Debug || runMode == config.RunModes.Run {
 		fromClusterNodes, err = GetClusterPlatforms(ctx, kubeContext, runMode == config.RunModes.Dev || runMode == config.RunModes.Debug)
 		if err != nil {
-			log.Entry(ctx).Debugf("failed to get cluster node details: %w", err)
+			log.Entry(ctx).Debugf("failed to get cluster node details: %v", err)
 			log.Entry(ctx).Warnln("failed to detect active kubernetes cluter node platform. Specify the correct build platform in the `skaffold.yaml` file or using the `--platform` flag")
 		}
 	}
@@ -61,30 +63,35 @@ func NewResolver(ctx context.Context, pipelines []latestV1.Pipeline, cliPlatform
 
 	for _, pipeline := range pipelines {
 		platforms := fromCli
-		if len(platforms) == 0 {
-			platforms, err = ParsePlatforms(pipeline.Build.Platforms)
+		if platforms.IsEmpty() {
+			platforms, err = Parse(pipeline.Build.Platforms)
 			if err != nil {
 				return r, fmt.Errorf("failed to parse platforms: %w", err)
 			}
 		}
-		if p := platforms; len(fromClusterNodes) != 0 {
-			platforms = platforms.Intersect(fromClusterNodes)
-			if len(platforms) == 0 && len(p) != 0 {
-				return r, fmt.Errorf("build target platforms %q do not match active kubernetes cluster node platforms %q", p, fromClusterNodes)
+		if fromClusterNodes.IsNotEmpty() {
+			if platforms.IsEmpty() {
+				platforms = fromClusterNodes
+			} else if p := platforms.Intersect(fromClusterNodes); p.IsNotEmpty() {
+				platforms = p
+			} else {
+				return r, fmt.Errorf("build target platforms %q do not match active kubernetes cluster node platforms %q", platforms, fromClusterNodes)
 			}
 		}
 		for _, artifact := range pipeline.Build.Artifacts {
 			pl := platforms
-			if len(platforms) != 0 && len(artifact.Platforms) != 0 {
-				constraints, err := ParsePlatforms(artifact.Platforms)
-				if err != nil {
-					return r, fmt.Errorf("failed to parse platforms: %w", err)
-				}
-				pl = platforms.Intersect(constraints)
-				if len(pl) == 0 {
+			constraints, err := Parse(artifact.Platforms)
+			if err != nil {
+				return r, fmt.Errorf("failed to parse platforms: %w", err)
+			}
+			if constraints.IsNotEmpty() {
+				if pl.IsEmpty() {
+					pl = constraints
+				} else if pl = pl.Intersect(constraints); pl.IsEmpty() {
 					return r, fmt.Errorf("build target platforms %q do not match platform constraints %q defined for artifact %q", platforms, artifact.Platforms, artifact.ImageName)
 				}
 			}
+
 			r.platformsByImageName[artifact.ImageName] = pl
 			log.Entry(ctx).Debugf("platforms selected for artifact %q: %q", artifact.ImageName, pl)
 		}
@@ -92,55 +99,42 @@ func NewResolver(ctx context.Context, pipelines []latestV1.Pipeline, cliPlatform
 	return r, nil
 }
 
-func ParsePlatforms(ps []string) (Platforms, error) {
-	var platforms Platforms
-	for _, p := range ps {
-		platform, err := Parse(p)
-		if err != nil {
-			return nil, UnknownPlatformCLIFlag(p, err)
-		}
-		platforms = append(platforms, platform)
-	}
-	return platforms, nil
-}
-
 // GetClusterPlatforms returns the platforms for the active kubernetes cluster.
 // For `dev` or `debug` if there are multiple cluster node platforms, then it returns only one selection, preferably matching the host platform.
-func GetClusterPlatforms(ctx context.Context, kContext string, isDevOrDebug bool) (Platforms, error) {
+func GetClusterPlatforms(ctx context.Context, kContext string, isDevOrDebug bool) (Matcher, error) {
 	client, err := kubernetesclient.Client(kContext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine kubernetes cluster node platforms: %w", err)
+		return Matcher{}, fmt.Errorf("failed to determine kubernetes cluster node platforms: %w", err)
 	}
 	nodes, err := client.CoreV1().Nodes().List(ctx, coreV1.ListOptions{})
 	if nodes == nil || err != nil {
-		return nil, fmt.Errorf("failed to determine kubernetes cluster node platforms: %w", err)
+		return Matcher{}, fmt.Errorf("failed to determine kubernetes cluster node platforms: %w", err)
 	}
-	set := make(map[string]Platform)
+	set := make(map[string]v1.Platform)
 	for _, n := range nodes.Items {
-		pl := Platform{Platform: v1.Platform{
+		pl := v1.Platform{
 			Architecture: n.Status.NodeInfo.Architecture,
 			OS:           n.Status.NodeInfo.OperatingSystem,
-		}}
-		set[pl.String()] = pl
+		}
+		set[Format(pl)] = pl
 	}
 
-	var ps Platforms
+	var m Matcher
 	for _, v := range set {
-		ps = append(ps, v)
+		m.Platforms = append(m.Platforms, v)
 	}
 
-	if !isDevOrDebug || len(ps) <= 1 {
-		return ps, nil
+	if !isDevOrDebug || len(m.Platforms) <= 1 {
+		return m, nil
 	}
 
 	// If there's more than 1 node platform type and we're running `dev` or `debug`,
 	// then select the platform type that matches the host platform.
 	// If there's no match then just return the first node platform type found.
-	hostPlatform := Platform{Platform: platforms.DefaultSpec()}
-
-	filtered := ps.Intersect(Platforms{hostPlatform})
-	if len(filtered) == 0 {
-		return ps[0:1], nil
+	filtered := m.Intersect(Host)
+	if len(filtered.Platforms) == 0 {
+		m.Platforms = m.Platforms[0:1]
+		return m, nil
 	}
 	return filtered, nil
 }

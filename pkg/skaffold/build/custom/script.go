@@ -38,7 +38,7 @@ var (
 	buildContext = retrieveBuildContext
 )
 
-func (b *Builder) runBuildScript(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) error {
+func (b *Builder) runBuildScript(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) error {
 	cmd, err := b.retrieveCmd(ctx, out, a, tag, platforms)
 	if err != nil {
 		return fmt.Errorf("retrieving cmd: %w", err)
@@ -52,7 +52,7 @@ func (b *Builder) runBuildScript(ctx context.Context, out io.Writer, a *latestV1
 	return misc.HandleGracefulTermination(ctx, cmd)
 }
 
-func (b *Builder) retrieveCmd(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) (*exec.Cmd, error) {
+func (b *Builder) retrieveCmd(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) (*exec.Cmd, error) {
 	artifact := a.CustomArtifact
 
 	// Expand command
@@ -87,7 +87,7 @@ func (b *Builder) retrieveCmd(ctx context.Context, out io.Writer, a *latestV1.Ar
 	return cmd, nil
 }
 
-func (b *Builder) retrieveEnv(a *latestV1.Artifact, tag string, platforms platform.Platforms) ([]string, error) {
+func (b *Builder) retrieveEnv(a *latestV1.Artifact, tag string, platforms platform.Matcher) ([]string, error) {
 	buildContext, err := buildContext(a.Workspace)
 	if err != nil {
 		return nil, fmt.Errorf("getting absolute path for artifact build context: %w", err)
@@ -97,6 +97,7 @@ func (b *Builder) retrieveEnv(a *latestV1.Artifact, tag string, platforms platfo
 		fmt.Sprintf("%s=%s", constants.Image, tag),
 		fmt.Sprintf("%s=%t", constants.PushImage, b.pushImages),
 		fmt.Sprintf("%s=%s", constants.BuildContext, buildContext),
+		fmt.Sprintf("%s=%s", constants.Platforms, platforms.String()),
 		fmt.Sprintf("%s=%t", constants.SkipTest, b.skipTest),
 	}
 

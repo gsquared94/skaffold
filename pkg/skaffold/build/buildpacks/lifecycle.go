@@ -47,7 +47,7 @@ var (
 // to pull the images that are already pulled.
 var images pulledImages
 
-func (b *Builder) build(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
+func (b *Builder) build(ctx context.Context, out io.Writer, a *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 	artifact := a.BuildpackArtifact
 	workspace := a.Workspace
 

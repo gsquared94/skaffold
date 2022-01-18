@@ -60,7 +60,7 @@ type PipelineBuilder interface {
 	PushImages() bool
 
 	// SupportedPlatforms returns the platforms supported for building the image by this build pipeline type.
-	SupportedPlatforms() platform.Platforms
+	SupportedPlatforms() platform.Matcher
 }
 
 type ErrSyncMapNotSupported struct{}

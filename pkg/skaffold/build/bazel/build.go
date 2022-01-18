@@ -35,9 +35,9 @@ import (
 )
 
 // Build builds an artifact with Bazel.
-func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Platforms) (string, error) {
-	// TODO: Implement building multiplatform images
-	if len(platforms) > 1 {
+func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, matcher platform.Matcher) (string, error) {
+	// TODO: Implement building multi-platform images
+	if matcher.IsMultiPlatform() {
 		log.Entry(ctx).Println("skaffold doesn't yet support multi platform builds for the bazel builder")
 	}
 
@@ -54,7 +54,7 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.A
 	return b.loadImage(ctx, out, tarPath, a, tag)
 }
 
-func (b *Builder) SupportedPlatforms() platform.Platforms { return platform.All }
+func (b *Builder) SupportedPlatforms() platform.Matcher { return platform.All }
 
 func (b *Builder) buildTar(ctx context.Context, out io.Writer, workspace string, a *latestV1.BazelArtifact) (string, error) {
 	if !strings.HasSuffix(a.BuildTarget, ".tar") {
