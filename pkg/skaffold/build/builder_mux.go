@@ -100,11 +100,12 @@ func (b *BuilderMux) Build(ctx context.Context, out io.Writer, tags tag.ImageTag
 
 	builder := func(ctx context.Context, out io.Writer, artifact *latestV1.Artifact, tag string, platforms platform.Matcher) (string, error) {
 		p := b.byImageName[artifact.ImageName]
-		if pl, err := filterBuildEnvSupportedPlatforms(p.SupportedPlatforms(), platforms); err != nil {
+		pl, err := filterBuildEnvSupportedPlatforms(p.SupportedPlatforms(), platforms)
+		if err != nil {
 			return "", err
-		} else {
-			platforms = pl
 		}
+		platforms = pl
+
 		artifactBuilder := p.Build(ctx, out, artifact)
 		hooksOpts, err := hooks.NewBuildEnvOpts(artifact, tag, p.PushImages())
 		if err != nil {
@@ -152,9 +153,9 @@ func filterBuildEnvSupportedPlatforms(supported platform.Matcher, target platfor
 	if target.IsEmpty() {
 		return target, nil
 	}
-	if pl := target.Intersect(supported); pl.IsEmpty() {
+	pl := target.Intersect(supported)
+	if pl.IsEmpty() {
 		return platform.Matcher{}, fmt.Errorf("target build platforms %q not supported by current build environment. Supported platforms: %q", target, supported)
-	} else {
-		return pl, nil
 	}
+	return pl, nil
 }

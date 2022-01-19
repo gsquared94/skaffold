@@ -20,9 +20,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/output/log"
 	"github.com/containerd/containerd/platforms"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/output/log"
 )
 
 var (
@@ -48,12 +49,12 @@ func (m Matcher) IsMultiPlatform() bool {
 	return m.All || len(m.Platforms) > 1
 }
 
-func (p Matcher) String() string {
-	if p.All {
+func (m Matcher) String() string {
+	if m.All {
 		return "all"
 	}
 	var pl []string
-	for _, p := range p.Platforms {
+	for _, p := range m.Platforms {
 		pl = append(pl, Format(p))
 	}
 	return strings.Join(pl, ",")

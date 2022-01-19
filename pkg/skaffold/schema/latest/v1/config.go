@@ -160,7 +160,7 @@ type BuildConfig struct {
 	TagPolicy TagPolicy `yaml:"tagPolicy,omitempty"`
 
 	// Platforms is the list of platforms to build all artifact images for.
-	// It can be overriden by the individual artifact's `platforms` property.
+	// It can be overridden by the individual artifact's `platforms` property.
 	// If the target builder cannot build for atleast one of the specified platforms, then the build fails.
 	// Each platform is of the format `os[/arch[/variant]]`, e.g., `linux/amd64`.
 	// Example: `["linux/amd64", "linux/arm64"]`.
@@ -886,7 +886,7 @@ type Artifact struct {
 	LifecycleHooks BuildHooks `yaml:"hooks,omitempty"`
 
 	// Platforms is the list of platforms to build this artifact image for.
-	// It overrides the values inferred through heuristics or provided in the top level `platforms` property or in the global config. 
+	// It overrides the values inferred through heuristics or provided in the top level `platforms` property or in the global config.
 	// If the target builder cannot build for atleast one of the specified platforms, then the build fails.
 	// Each platform is of the format `os[/arch[/variant]]`, e.g., `linux/amd64`.
 	// Example: `["linux/amd64", "linux/arm64"]`.

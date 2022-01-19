@@ -21,6 +21,7 @@ import (
 	"io"
 	"time"
 
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build"
@@ -29,7 +30,6 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/graph"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/platform"
 	latestV1 "github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest/v1"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const (

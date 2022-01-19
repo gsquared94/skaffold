@@ -21,10 +21,11 @@ import (
 	"fmt"
 	"io"
 
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/output/log"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/platform"
 	latestV1 "github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest/v1"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // Build builds an artifact with Cloud Native Buildpacks:
@@ -35,7 +36,7 @@ func (b *Builder) Build(ctx context.Context, out io.Writer, artifact *latestV1.A
 		log.Entry(ctx).Println("skaffold doesn't yet support multi platform builds for the buildpacks builder")
 	}
 
-	built, err := b.build(ctx, out, artifact, tag, matcher)
+	built, err := b.build(ctx, out, artifact, tag)
 	if err != nil {
 		return "", err
 	}
