@@ -78,7 +78,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/segmentio/textio v1.2.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/afero v1.6.0 // indirect
+	github.com/spf13/afero v1.6.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tektoncd/pipeline v0.5.1-0.20190731183258-9d7e37e85bf8
@@ -112,6 +112,6 @@ require (
 	k8s.io/utils v0.0.0-20210517184530-5a248b5acedc
 	knative.dev/pkg v0.0.0-20201119170152-e5e30edc364a // indirect
 	sigs.k8s.io/cli-utils v0.22.0
-	sigs.k8s.io/kustomize/kyaml v0.10.17
+	sigs.k8s.io/kustomize/kyaml v0.13.2
 	sigs.k8s.io/yaml v1.2.0
 )
