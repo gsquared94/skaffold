@@ -74,7 +74,7 @@ func (b *Builder) buildSpecForArtifact(ctx context.Context, a *latestV1.Artifact
 		if platforms.IsNotEmpty() && platforms.Intersect(platform.Matcher{Platforms: []v1.Platform{{OS: "linux", Architecture: "amd64"}}}).IsEmpty() {
 			return cloudbuild.Build{}, fmt.Errorf("buildpacks builder doesn't support building for platforms %s. Cannot build gcb artifact:\n%s", platforms.String(), misc.FormatArtifact(a))
 		}
-		return b.buildpackBuildSpec(a.BuildpackArtifact, tag, a.Dependencies)
+		return b.buildpackBuildSpec(ctx, a.BuildpackArtifact, tag, a.Dependencies)
 
 	default:
 		return cloudbuild.Build{}, fmt.Errorf("unexpected type %q for gcb artifact:\n%s", misc.ArtifactType(a), misc.FormatArtifact(a))

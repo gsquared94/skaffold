@@ -19,6 +19,7 @@ package gcb
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"google.golang.org/api/cloudbuild/v1"
 
@@ -29,8 +30,12 @@ import (
 	latestV1 "github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest/v1"
 )
 
-func (b *Builder) buildpackBuildSpec(artifact *latestV1.BuildpackArtifact, tag string, deps []*latestV1.ArtifactDependency) (cloudbuild.Build, error) {
-	args := []string{"pack", "build", tag, "--builder", fromRequiredArtifacts(artifact.Builder, b.artifactStore, deps)}
+func (b *Builder) buildpackBuildSpec(ctx context.Context, artifact *latestV1.BuildpackArtifact, tag string, deps []*latestV1.ArtifactDependency) (cloudbuild.Build, error) {
+	if strings.HasPrefix(b.PackImage, "gcr.io/k8s-skaffold/pack") {
+		log.Entry(ctx).Warnf("The image %q is deprecated and will not be updated after March 31, 2022.\nPlease use the Cloud Native Buildpack's image at https://hub.docker.com/r/buildpacksio/pack", b.PackImage)
+	}
+
+	args := []string{"build", tag, "--builder", fromRequiredArtifacts(artifact.Builder, b.artifactStore, deps)}
 
 	if artifact.ProjectDescriptor != constants.DefaultProjectDescriptor {
 		args = append(args, "--descriptor", artifact.ProjectDescriptor)

@@ -49,6 +49,8 @@ const (
 
 	DefaultBusyboxImage = "gcr.io/k8s-skaffold/skaffold-helpers/busybox"
 
+	DefaultCloudBuildPackImage = "docker.io/buildpacksio/pack"
+	
 	// DefaultDebugHelpersRegistry is the default location used for the helper images for `debug`.
 	DefaultDebugHelpersRegistry = "gcr.io/k8s-skaffold/skaffold-debug-support"
 

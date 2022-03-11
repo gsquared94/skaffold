@@ -37,7 +37,7 @@ const (
 	defaultCloudBuildMavenImage  = "gcr.io/cloud-builders/mvn"
 	defaultCloudBuildGradleImage = "gcr.io/cloud-builders/gradle"
 	defaultCloudBuildKanikoImage = kaniko.DefaultImage
-	defaultCloudBuildPackImage   = "gcr.io/k8s-skaffold/pack"
+	defaultCloudBuildPackImage   = constants.DefaultCloudBuildPackImage
 )
 
 // Set makes sure default values are set on a SkaffoldConfig.
