@@ -36,7 +36,7 @@ require (
 	github.com/buildpacks/pack v0.23.0
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/containerd/containerd v1.5.9
-	github.com/docker/cli v20.10.11+incompatible
+	github.com/docker/cli v20.10.13+incompatible
 	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v20.10.11+incompatible
 	github.com/docker/go-connections v0.4.0
