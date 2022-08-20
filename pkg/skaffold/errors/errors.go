@@ -88,12 +88,13 @@ func V2fromV1(ae *proto.ActionableErr) *protoV2.ActionableErr {
 }
 
 func ShowAIError(cfg interface{}, err error) error {
+	if e, ok := AsSkaffoldErr(err); ok {
+		instrumentation.SetErrorCode(e.StatusCode())
+		return e
+	}
+
 	if uErr := errors.Unwrap(err); uErr != nil {
 		err = uErr
-	}
-	if IsSkaffoldErr(err) {
-		instrumentation.SetErrorCode(err.(Error).StatusCode())
-		return err
 	}
 
 	if p, ok := isProblem(err); ok {

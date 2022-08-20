@@ -17,6 +17,7 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/GoogleContainerTools/skaffold/proto/v1"
@@ -71,8 +72,14 @@ func NewErrorWithStatusCode(ae *proto.ActionableErr) *ErrDef {
 }
 
 func IsSkaffoldErr(err error) bool {
-	if _, ok := err.(Error); ok {
-		return true
+	_, ok := AsSkaffoldErr(err)
+	return ok
+}
+
+func AsSkaffoldErr(err error) (*ErrDef, bool) {
+	var sErr *ErrDef
+	if errors.As(err, &sErr) {
+		return sErr, true
 	}
-	return false
+	return nil, false
 }
