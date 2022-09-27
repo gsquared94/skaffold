@@ -23,9 +23,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/kaniko"
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/misc"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 )
 
 func (b *Builder) kanikoBuildSpec(a *latest.Artifact, tag string) (cloudbuild.Build, error) {
@@ -42,7 +42,7 @@ func (b *Builder) kanikoBuildSpec(a *latest.Artifact, tag string) (cloudbuild.Bu
 		return cloudbuild.Build{}, err
 	}
 
-	env, err := misc.EvaluateEnv(envFromVars(k.Env))
+	env, err := util.EvaluateEnv(envFromVars(k.Env))
 	if err != nil {
 		return cloudbuild.Build{}, fmt.Errorf("unable to evaluate env variables: %w", err)
 	}

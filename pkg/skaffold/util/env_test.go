@@ -14,12 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package misc
+package util
 
 import (
 	"testing"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 	"github.com/GoogleContainerTools/skaffold/testutil"
 )
 
@@ -48,7 +47,7 @@ func TestEvaluateEnv(t *testing.T) {
 	}
 	for _, test := range tests {
 		testutil.Run(t, test.description, func(t *testutil.T) {
-			t.Override(&util.OSEnviron, func() []string { return []string{"FOO=foo", "BAR=bar"} })
+			t.Override(&OSEnviron, func() []string { return []string{"FOO=foo", "BAR=bar"} })
 
 			result, err := EvaluateEnv(test.env)
 

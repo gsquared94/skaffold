@@ -23,7 +23,6 @@ import (
 	"github.com/buildpacks/pack/pkg/project"
 	"github.com/buildpacks/pack/pkg/project/types"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/misc"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
@@ -46,7 +45,7 @@ func GetEnv(a *latest.Artifact, mode config.RunMode) (map[string]string, error) 
 }
 
 func env(a *latest.Artifact, mode config.RunMode, projectDescriptor types.Descriptor) (map[string]string, error) {
-	envVars, err := misc.EvaluateEnv(a.BuildpackArtifact.Env)
+	envVars, err := util.EvaluateEnv(a.BuildpackArtifact.Env)
 	if err != nil {
 		return nil, fmt.Errorf("unable to evaluate env variables: %w", err)
 	}

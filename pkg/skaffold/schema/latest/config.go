@@ -741,6 +741,11 @@ type DockerDeploy struct {
 
 	// Images are the container images to run in Docker.
 	Images []string `yaml:"images" yamltags:"required"`
+
+	// Env are environment variables, in the `key=value` form,  passed to the build.
+	// Values can use the go template syntax.
+	// For example: `["key1=value1", "key2=value2", "key3={{.ENV_VARIABLE}}"]`.
+	Env []string `yaml:"env,omitempty"`
 }
 
 // KubectlDeploy *beta* uses a client side `kubectl apply` to deploy manifests.

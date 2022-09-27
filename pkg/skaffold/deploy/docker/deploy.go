@@ -46,6 +46,7 @@ import (
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/status"
 	pkgsync "github.com/GoogleContainerTools/skaffold/pkg/skaffold/sync"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util/stringslice"
 )
 
@@ -271,6 +272,11 @@ func (d *Deployer) containerConfigFromImage(ctx context.Context, taggedImage str
 		return nil, err
 	}
 	config.Config.Image = taggedImage // the client replaces this with an image ID. put back the originally provided tagged image
+	addedEnv, err := util.EvaluateEnv(d.cfg.Env)
+	if err != nil {
+		return nil, err
+	}
+	config.ContainerConfig.Env = util.ReplaceOrAppendEnvValues(config.ContainerConfig.Env, addedEnv) // add additional environment variables
 	return config.Config, err
 }
 

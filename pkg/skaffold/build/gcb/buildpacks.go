@@ -22,11 +22,11 @@ import (
 
 	"google.golang.org/api/cloudbuild/v1"
 
-	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/build/misc"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/constants"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/docker"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/output/log"
 	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/schema/latest"
+	"github.com/GoogleContainerTools/skaffold/pkg/skaffold/util"
 )
 
 func (b *Builder) buildpackBuildSpec(artifact *latest.BuildpackArtifact, tag string, deps []*latest.ArtifactDependency) (cloudbuild.Build, error) {
@@ -48,7 +48,7 @@ func (b *Builder) buildpackBuildSpec(artifact *latest.BuildpackArtifact, tag str
 		args = append(args, "--trust-builder")
 	}
 
-	env, err := misc.EvaluateEnv(artifact.Env)
+	env, err := util.EvaluateEnv(artifact.Env)
 	if err != nil {
 		return cloudbuild.Build{}, fmt.Errorf("unable to evaluate env variables: %w", err)
 	}
