@@ -19,6 +19,7 @@ package platform
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/containerd/containerd/platforms"
@@ -52,6 +53,10 @@ func (m Matcher) IsMultiPlatform() bool {
 
 func (m Matcher) IsCrossPlatform() bool {
 	return m.IsMultiPlatform() || (len(m.Platforms) == 1 && !platforms.Only(m.Platforms[0]).Match(platforms.DefaultSpec()))
+}
+
+func (m Matcher) IsCrossArch() bool {
+	return m.IsMultiPlatform() || (len(m.Platforms) == 1 && m.Platforms[0].Architecture != runtime.GOARCH)
 }
 
 func (m Matcher) Array() []string {
