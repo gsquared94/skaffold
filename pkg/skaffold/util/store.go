@@ -25,15 +25,43 @@ import (
 
 // SyncStore exports a single method `Exec` to ensure single execution of a function
 // and share the result between all callers of the function.
-type SyncStore struct {
+type SyncStore[T any] struct {
 	sf      singleflight.Group
-	results sync.Map
+	results syncMap[T]
+}
+
+type syncMap[T any] struct {
+	sync.Map
+}
+
+func (s *syncMap[T]) Store(key string, val T, err error) {
+	if err != nil {
+		s.Map.Store(key, err)
+	} else {
+		s.Map.Store(key, val)
+	}
+}
+
+func (s *syncMap[T]) Load(key string) (val T, err error, ok bool) {
+	v, found := s.Map.Load(key)
+	if !found {
+		return
+	}
+	ok = true
+	switch t := v.(type) {
+	case error:
+		err = t
+	case T:
+		val = t
+	}
+	return
 }
 
 // Exec executes the function f if and only if it's being called the first time for a specific key.
 // If it's called multiple times for the same key only the first call will execute and store the result of f.
 // All other calls will be blocked until the running instance of f returns and all of them receive the same result.
-func (o *SyncStore) Exec(key string, f func() interface{}) interface{} {
+func (o *SyncStore[T]) Exec(key string, f func() (T, error)) (T, error) {
+	var dflt T
 	val, err := o.sf.Do(key, func() (_ interface{}, err error) {
 		// trap any runtime error due to synchronization issues.
 		defer func() {
@@ -41,31 +69,34 @@ func (o *SyncStore) Exec(key string, f func() interface{}) interface{} {
 				err = retrieveError(key, rErr)
 			}
 		}()
-		v, ok := o.results.Load(key)
-		if !ok {
-			v = f()
-			o.results.Store(key, v)
+		v, err, found := o.results.Load(key)
+		if found {
+			return v, err
 		}
-		return v, nil
+		v, err = f()
+		o.results.Store(key, v, err)
+		return v, err
 	})
-	if err != nil {
-		return err
+	switch t := val.(type) {
+	case T:
+		return t, err
+	default:
+		return dflt, err
 	}
-	return val
 }
 
 // Store will store the results for a key in a cache
 // This function is not safe to use if multiple subroutines store the
 // result for the same key.
-func (o *SyncStore) Store(key string, r interface{}) {
-	o.results.Store(key, r)
+func (o *SyncStore[T]) Store(key string, r T, err error) {
+	o.results.Store(key, r, err)
 }
 
 // NewSyncStore returns a new instance of `SyncStore`
-func NewSyncStore() *SyncStore {
-	return &SyncStore{
+func NewSyncStore[T any]() *SyncStore[T] {
+	return &SyncStore[T]{
 		sf:      singleflight.Group{},
-		results: sync.Map{},
+		results: syncMap[T]{sync.Map{}},
 	}
 }
 
