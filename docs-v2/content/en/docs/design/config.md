@@ -47,23 +47,7 @@ For example, consider a project with the following layout:
 ```
 
 The config file might look like:
-```yaml
-apiVersion: skaffold/v2beta11
-kind: Config
-build:
-  artifacts:
-  - image: app
-    context: frontend
-    docker:
-      dockerfile: "Dockerfile"
-deploy:
-  helm:
-    releases:
-    - name: project
-      chartPath: helm/project
-      valuesFiles:
-      - "helm/project/dev-values.yaml"
-```
+{{% readfile file="samples/config/config-dependencies.yaml" %}}
 
 In this example, the `Dockerfile` for building `app`
 is resolved relative to `app`'s context directory,

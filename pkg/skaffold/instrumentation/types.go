@@ -99,6 +99,18 @@ type skaffoldMeter struct {
 	// ClusterType reports if user cluster is a GKE cluster or not.
 	ClusterType string
 
+	// UsesGKE reports if the run uses Google Kubernetes Engine.
+	UsesGKE bool
+
+	// UsesCloudRun reports if the run uses Google Kubernetes Engine.
+	UsesCloudRun bool
+
+	// UsesCloudBuild reports if the run uses Google Kubernetes Engine.
+	UsesCloudBuild bool
+
+	// CICDPlatform denotes a known CI-CD environment like Github Actions, Azure Pipelines, etc that the current skaffold run is being executed in.
+	CICDPlatform string
+
 	// ResolvedBuildTargetPlatforms represents the set of resolved build target platforms for each pipeline
 	ResolvedBuildTargetPlatforms []string
 

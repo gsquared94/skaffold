@@ -173,16 +173,17 @@ func createMetrics(ctx context.Context, meter skaffoldMeter) {
 		attribute.String("platform_type", meter.PlatformType),
 		attribute.String("config_count", strconv.Itoa(meter.ConfigCount)),
 		attribute.String("cluster_type", meter.ClusterType),
+		attribute.String("uses_gke", strconv.FormatBool(meter.UsesGKE)),
+		attribute.String("uses_cloud_run", strconv.FormatBool(meter.UsesCloudRun)),
+		attribute.String("uses_cloud_build", strconv.FormatBool(meter.UsesCloudBuild)),
+		attribute.String("ci_cd_platform", meter.CICDPlatform),
+		attribute.String("host_os_arch", fmt.Sprintf("%s/%s", meter.OS, meter.Arch)),
 	}
-	sharedLabels := []attribute.KeyValue{
-		randLabel,
-	}
+	labels = append(labels, randLabel)
 
 	if allowedUser := user.IsAllowedUser(meter.User); allowedUser {
-		sharedLabels = append(sharedLabels, attribute.String("user", meter.User))
+		labels = append(labels, attribute.String("user", meter.User))
 	}
-	labels = append(labels, sharedLabels...)
-	platformLabel := attribute.String("host_os_arch", fmt.Sprintf("%s/%s", meter.OS, meter.Arch))
 	runCounter := metric.Must(m).NewInt64ValueRecorder("launches", metric.WithDescription("Skaffold Invocations"))
 	runCounter.Record(ctx, 1, labels...)
 
@@ -190,35 +191,32 @@ func createMetrics(ctx context.Context, meter skaffoldMeter) {
 		metric.WithDescription("durations of skaffold commands in seconds"))
 	durationRecorder.Record(ctx, meter.Duration.Seconds(), labels...)
 	if meter.Command != "" {
-		commandMetrics(ctx, meter, m, sharedLabels...)
-		flagMetrics(ctx, meter, m, randLabel)
+		commandMetrics(ctx, meter, m, labels...)
+		flagMetrics(ctx, meter, m, labels...)
 		hooksMetrics(ctx, meter, m, labels...)
 		if doesBuild.Contains(meter.Command) {
-			builderMetrics(ctx, meter, m, platformLabel, sharedLabels...)
+			builderMetrics(ctx, meter, m, labels...)
 		}
 		if doesDeploy.Contains(meter.Command) {
-			deployerMetrics(ctx, meter, m, sharedLabels...)
+			deployerMetrics(ctx, meter, m, labels...)
 		}
 		if doesDeploy.Contains(meter.Command) || meter.Command == "render" {
-			resourceSelectorMetrics(ctx, meter, m, sharedLabels...)
+			resourceSelectorMetrics(ctx, meter, m, labels...)
 		}
 	}
 
 	if meter.ErrorCode != 0 {
-		errorMetrics(ctx, meter, m, append(sharedLabels, platformLabel)...)
+		errorMetrics(ctx, meter, m, labels...)
 	}
 }
 
-func flagMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, randLabel attribute.KeyValue) {
+func flagMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, labels ...attribute.KeyValue) {
 	flagCounter := metric.Must(m).NewInt64ValueRecorder("flags", metric.WithDescription("Tracks usage of enum flags"))
 	for k, v := range meter.EnumFlags {
-		labels := []attribute.KeyValue{
+		labels = append(labels,
 			attribute.String("flag_name", k),
 			attribute.String("flag_value", v),
-			attribute.String("command", meter.Command),
-			attribute.String("error", meter.ErrorCode.String()),
-			randLabel,
-		}
+		)
 		flagCounter.Record(ctx, 1, labels...)
 	}
 }
@@ -226,7 +224,6 @@ func flagMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, randL
 func commandMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, labels ...attribute.KeyValue) {
 	commandCounter := metric.Must(m).NewInt64ValueRecorder(meter.Command,
 		metric.WithDescription(fmt.Sprintf("Number of times %s is used", meter.Command)))
-	labels = append(labels, attribute.String("error", meter.ErrorCode.String()))
 	commandCounter.Record(ctx, 1, labels...)
 
 	if meter.Command == "dev" || meter.Command == "debug" {
@@ -242,10 +239,18 @@ func commandMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, la
 			m := counts[iteration.Intent]
 			m[iteration.ErrorCode]++
 		}
+		var sl []attribute.KeyValue
+		for _, l := range labels {
+			if l.Key == "error" { // replace global error label with per iteration error value
+				continue
+			}
+			sl = append(sl, l)
+		}
 		for intention, errorCounts := range counts {
 			for errorCode, count := range errorCounts {
+
 				iterationCounter.Record(ctx, int64(count),
-					append(labels,
+					append(sl,
 						attribute.String("intent", intention),
 						attribute.String("error", errorCode.String()),
 					)...)
@@ -274,7 +279,7 @@ func resourceSelectorMetrics(ctx context.Context, meter skaffoldMeter, m metric.
 	}
 }
 
-func builderMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, platformLabel attribute.KeyValue, labels ...attribute.KeyValue) {
+func builderMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, labels ...attribute.KeyValue) {
 	builderCounter := metric.Must(m).NewInt64ValueRecorder("builders", metric.WithDescription("Builders used"))
 	artifactCounter := metric.Must(m).NewInt64ValueRecorder("artifacts", metric.WithDescription("Number of artifacts used"))
 	dependenciesCounter := metric.Must(m).NewInt64ValueRecorder("artifact-dependencies", metric.WithDescription("Number of artifacts with dependencies"))
@@ -284,24 +289,24 @@ func builderMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, pl
 		builderCounter.Record(ctx, 1, append(labels, bLabel)...)
 		artifactCounter.Record(ctx, int64(count), append(labels, bLabel)...)
 		dependenciesCounter.Record(ctx, int64(meter.BuildDependencies[builder]), append(labels, bLabel)...)
-		platformsCounter.Record(ctx, int64(meter.BuildWithPlatforms[builder]), append(labels, platformLabel, bLabel)...)
+		platformsCounter.Record(ctx, int64(meter.BuildWithPlatforms[builder]), append(labels, bLabel)...)
 	}
 
 	if len(meter.ResolvedBuildTargetPlatforms) > 0 {
 		platforms := metric.Must(m).NewInt64ValueRecorder("build-platforms", metric.WithDescription("The resolved build target platforms for each run"))
 		for _, buildPlatform := range meter.ResolvedBuildTargetPlatforms {
-			platforms.Record(ctx, 1, append(labels, platformLabel, attribute.String("os_arch", buildPlatform))...)
+			platforms.Record(ctx, 1, append(labels, attribute.String("os_arch", buildPlatform))...)
 		}
 	}
 
 	if len(meter.CliBuildTargetPlatforms) > 0 {
 		platforms := metric.Must(m).NewInt64ValueRecorder("cli-platforms", metric.WithDescription("The build target platforms specified via CLI flag --platform"))
-		platforms.Record(ctx, 1, append(labels, platformLabel, attribute.String("os_arch", meter.CliBuildTargetPlatforms))...)
+		platforms.Record(ctx, 1, append(labels, attribute.String("os_arch", meter.CliBuildTargetPlatforms))...)
 	}
 
 	if len(meter.DeployNodePlatforms) > 0 {
 		platforms := metric.Must(m).NewInt64ValueRecorder("node-platforms", metric.WithDescription("The kubernetes cluster node platforms"))
-		platforms.Record(ctx, 1, append(labels, platformLabel, attribute.String("os_arch", meter.DeployNodePlatforms))...)
+		platforms.Record(ctx, 1, append(labels, attribute.String("os_arch", meter.DeployNodePlatforms))...)
 	}
 }
 
@@ -316,9 +321,7 @@ func hooksMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, labe
 
 func errorMetrics(ctx context.Context, meter skaffoldMeter, m metric.Meter, labels ...attribute.KeyValue) {
 	errCounter := metric.Must(m).NewInt64ValueRecorder("errors", metric.WithDescription("Skaffold errors"))
-	errCounter.Record(ctx, 1, append(labels, attribute.String("error", meter.ErrorCode.String()))...)
-
-	labels = append(labels, attribute.String("command", meter.Command))
+	errCounter.Record(ctx, 1, labels...)
 
 	switch meter.ErrorCode {
 	case proto.StatusCode_UNKNOWN_ERROR:

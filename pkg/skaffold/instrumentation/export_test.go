@@ -148,12 +148,6 @@ func TestExportMetrics(t *testing.T) {
 			meter:    debugMeter,
 			isOnline: true,
 		},
-		{
-			name:         "test otel metrics include offline metrics",
-			meter:        devMeter,
-			savedMetrics: metersBytes,
-			isOnline:     true,
-		},
 	}
 	for _, test := range tests {
 		testutil.Run(t, test.name, func(t *testutil.T) {
@@ -166,6 +160,9 @@ func TestExportMetrics(t *testing.T) {
 
 			fs.AssetsFS = fakeFS
 			t.Override(&isOnline, test.isOnline)
+			t.Override(&lookupEnv, func(_ string) (string, bool) {
+				return "", false
+			})
 
 			if test.isOnline {
 				tmpFile, err := os.OpenFile(tmp.Path(openTelFilename), os.O_RDWR|os.O_CREATE, os.ModePerm)
@@ -244,7 +241,9 @@ func TestInitCloudMonitoring(t *testing.T) {
 	for _, test := range tests {
 		testutil.Run(t, test.name, func(t *testutil.T) {
 			fs.AssetsFS = test.fileSystem
-
+			t.Override(&lookupEnv, func(_ string) (string, bool) {
+				return "", false
+			})
 			p, err := initCloudMonitoringExporterMetrics()
 
 			t.CheckErrorAndDeepEqual(test.shouldError, err, test.pusherIsNil || test.shouldError, p == nil)
@@ -370,6 +369,10 @@ func TestUserMetricReported(t *testing.T) {
 
 			fs.AssetsFS = fakeFS
 			t.Override(&isOnline, true)
+
+			t.Override(&lookupEnv, func(_ string) (string, bool) {
+				return "", false
+			})
 			tmpFile, err := os.OpenFile(tmp.Path(openTelFilename), os.O_RDWR|os.O_CREATE, os.ModePerm)
 			if err != nil {
 				t.Error(err)
@@ -472,35 +475,49 @@ func checkOutput(t *testutil.T, meters []skaffoldMeter, b []byte) {
 				errorCount[e]--
 			}
 		case "launch/duration":
-			durationCount[fmt.Sprintf("%s:%f", l.Labels["command"], l.value().(float64))]--
+		archCount[l.Labels["arch"]]--
+		durationCount[fmt.Sprintf("%s:%f", l.Labels["command"], l.value().(float64))]--
 		case "artifacts":
-			builders[l.Labels["builder"]] -= int(l.value().(float64)) - 1
+		archCount[l.Labels["arch"]]--
+		builders[l.Labels["builder"]] -= int(l.value().(float64)) - 1
 		case "artifact-with-platforms":
-			buildersWithPlatforms[l.Labels["builder"]] -= int(l.value().(float64)) - 1
+		archCount[l.Labels["arch"]]--
+		buildersWithPlatforms[l.Labels["builder"]] -= int(l.value().(float64)) - 1
 		case "artifact-dependencies":
-			buildDeps[l.Labels["builder"]] -= int(l.value().(float64)) - 1
+		archCount[l.Labels["arch"]]--
+		buildDeps[l.Labels["builder"]] -= int(l.value().(float64)) - 1
 		case "builders":
-			builders[l.Labels["builder"]]--
+		archCount[l.Labels["arch"]]--
+		builders[l.Labels["builder"]]--
 		case "deployer":
-			deployers[l.Labels["deployer"]]--
+		archCount[l.Labels["arch"]]--
+		deployers[l.Labels["deployer"]]--
 		case "dev/iterations", "debug/iterations":
+			archCount[l.Labels["arch"]]--
 			e := l.Labels["error"]
 			devIterations[devIteration{l.Labels["intent"], proto.StatusCode(proto.StatusCode_value[e])}]--
 		case "resource-filters":
-			resourceFilters[resourceFilter{l.Labels["source"], l.Labels["type"]}]--
+		archCount[l.Labels["arch"]]--
+		resourceFilters[resourceFilter{l.Labels["source"], l.Labels["type"]}]--
 		case "errors":
-			e := l.Labels["error"]
+		archCount[l.Labels["arch"]]--
+		e := l.Labels["error"]
 			errorCount[e]--
 		case "flags":
-			enumFlags[l.Labels["flag_name"]+":"+l.Labels["value"]]--
+		archCount[l.Labels["arch"]]--
+		enumFlags[l.Labels["flag_name"]+":"+l.Labels["value"]]--
 		case "helmReleases":
-			helmReleases[l.Labels["helmReleases"]]++
+		archCount[l.Labels["arch"]]--
+		helmReleases[l.Labels["helmReleases"]]++
 		case "build-platforms":
-			buildPlatforms[l.Labels["build-platforms"]]++
+		archCount[l.Labels["arch"]]--
+		buildPlatforms[l.Labels["build-platforms"]]++
 		case "node-platforms":
-			nodePlatforms[l.Labels["node-platforms"]]++
+		archCount[l.Labels["arch"]]--
+		nodePlatforms[l.Labels["node-platforms"]]++
 		case "cli-platforms":
-			cliPlatforms[l.Labels["cli-platforms"]]++
+		archCount[l.Labels["arch"]]--
+		cliPlatforms[l.Labels["cli-platforms"]]++
 		default:
 			switch {
 			case MeteredCommands.Contains(l.Name):
@@ -511,10 +528,14 @@ func checkOutput(t *testutil.T, meters []skaffoldMeter, b []byte) {
 		}
 	}
 
-	for _, m := range testMaps {
+	for i, m := range testMaps {
 		for n, v := range m {
 			t.Logf("Checking %s", n)
+			if v != 0 {
+				t.Logf("Failed in map[%d]", i)
+			}
 			t.CheckDeepEqual(0, v)
+
 		}
 	}
 }

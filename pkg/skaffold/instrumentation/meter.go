@@ -48,6 +48,7 @@ var (
 		SyncType:           map[string]bool{},
 		Hooks:              map[HookPhase]int{},
 		DevIterations:      []devIteration{},
+		CICDPlatform:       GetCICDPlatform(),
 		StartTime:          time.Now(),
 		Version:            version.Get().Version,
 		ExitCode:           0,
@@ -115,11 +116,20 @@ func InitMeterFromConfig(configs []*latest.SkaffoldConfig, user, deployCtx strin
 			meter.Hooks[HookPhases.PostDeploy] += len(k.LifecycleHooks.PostHooks)
 		}
 		meter.BuildArtifacts += len(config.Pipeline.Build.Artifacts)
+		if config.Pipeline.Build.BuildType.GoogleCloudBuild != nil {
+			meter.UsesCloudBuild = true
+		}
+		if config.Deploy.CloudRunDeploy != nil {
+			meter.UsesCloudRun = true
+		}
 	}
 	meter.PlatformType = strings.Join(platforms, ":")
 	meter.ConfigCount = len(configs)
 	meter.User = strings.ToLower(user)
 	meter.ClusterType = getClusterType(deployCtx)
+	if meter.ClusterType == gke {
+		meter.UsesGKE = true
+	}
 }
 
 func SetCommand(cmd string) {
